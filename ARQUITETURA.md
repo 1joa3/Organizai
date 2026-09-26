@@ -185,40 +185,48 @@ livro-caixa/
 
 ## Design System
 
-Direção visual: **Terminal Luxe** — a densidade funcional de um terminal financeiro com refinamento tipográfico e espaço respirável. O "memorável" é a tipografia monospace como protagonista de todos os dados numéricos.
+> ⚠️ Esta seção documentava a direção original "Terminal Luxe". Em algum ponto do
+> desenvolvimento (fora das sessões que geraram este documento) o app foi
+> re-skinado para **"Cyber-Luxe Glassmorphism"** — os tokens abaixo refletem o
+> `globals.css` real, não o plano original. Ver Changelog para o dia em que essa
+> divergência foi percebida.
+
+Direção visual: **Cyber-Luxe Glassmorphism** — fundo quase-preto, paleta neon (lima/rosa/dourado/ciano), cards em vidro fosco (`backdrop-filter: blur`) com brilho sutil nas bordas. O "memorável" é o contraste entre a densidade de dados financeiros e o acabamento neon/glow.
 
 ### Paleta
 
 | Token | Hex | Uso |
 |---|---|---|
-| `--bg` | `#0C0F14` | Fundo principal |
-| `--bg-raised` | `#13161D` | Cards e superfícies elevadas |
-| `--bg-surface` | `#1A1E27` | Inputs, tags, tooltips |
-| `--border` | `#252A35` | Divisórias e bordas |
-| `--text` | `#E8E6E1` | Texto primário |
-| `--text-dim` | `#6B7280` | Texto secundário |
-| `--text-muted` | `#3D4451` | Labels terciários |
-| `--emerald` | `#34D399` | Receita / positivo |
-| `--coral` | `#F87171` | Despesa / negativo |
-| `--amber` | `#FBBF24` | Metas / investimentos |
-| `--blue` | `#60A5FA` | Acento informacional |
+| `--bg` | `#030303` | Fundo principal |
+| `--bg-raised` | `rgba(20,20,25,0.4)` | Cards e superfícies elevadas (glass) |
+| `--bg-surface` | `rgba(30,30,40,0.4)` | Inputs, tags, tooltips |
+| `--border` | `rgba(255,255,255,0.08)` | Divisórias e bordas |
+| `--text` | `#F8F9FA` | Texto primário |
+| `--text-dim` | `#A1A1AA` | Texto secundário |
+| `--text-muted` | `#52525B` | Labels terciários |
+| `--emerald` | `#CCFF00` | Receita / positivo (lima elétrico) |
+| `--coral` | `#FF0055` | Despesa / negativo (rosa cyber) |
+| `--amber` | `#FFB800` | Metas / investimentos (dourado) |
+| `--blue` | `#00E5FF` | Acento informacional (ciano) |
+
+Esses tokens vivem em `src/app/globals.css` (`:root`) e são expostos como classes Tailwind (`text-emerald`, `bg-coral/15`, etc.) via `@theme inline`. Popups compartilham os mesmos tokens através de `src/lib/accents.ts` (ver Changelog) — nunca duplicar esses hex em outro lugar.
 
 ### Tipografia
 
 | Papel | Família | Peso |
 |---|---|---|
-| Títulos de seção | Instrument Serif (italic) | 400 |
-| Todos os valores numéricos | JetBrains Mono | 300–600 |
-| Texto de apoio, labels, nav | Outfit | 300–500 |
+| Títulos de seção (`.font-display`) | Plus Jakarta Sans | 600 |
+| Todos os valores numéricos (`.font-mono-value`) | JetBrains Mono | 400–600 |
+| Texto de apoio, labels, nav | Inter | 400–500 |
 
 ### Princípios
 
 - Valores monetários sempre em monospace — alinhamento visual como extrato bancário
-- Sem border-radius exagerado — máximo 4px
-- Sem box-shadow — hierarquia por bordas finas e cor de fundo
+- Cards em `glass-card`/`glass-panel` (`globals.css`): blur + borda translúcida + box-shadow suave, border-radius 8–12px
+- Glow via `drop-shadow`/`box-shadow` colorido nos tokens acima, não gradientes genéricos
 - Animações com staggered delay no page load (fade-up) e barras de progresso com intersection observer
 - Grid de pontos sutil no background (radial-gradient) — textura sem poluir
-- Fundo escuro por padrão; modo claro como futura iteração
+- Modo claro como futura iteração (ver Sugestões)
 
 ---
 
@@ -245,6 +253,16 @@ Direção visual: **Terminal Luxe** — a densidade funcional de um terminal fin
 - **Fase 6 — Filtro de período:** componente `PeriodSelector` (mês/ano via query string) plugado em `/` e `/transacoes`, substituindo o "mês atual" fixo.
 - **Fase 6 — Export CSV:** botão em Transações exporta a listagem filtrada (`src/lib/csv.ts`).
 - **Dados sensíveis:** `prisma/dev.db` (dados financeiros reais) não estava no `.gitignore` — corrigido antes do primeiro commit real do projeto.
+- **Repositório publicado:** commit `abc4881` enviado para `https://github.com/1joa3/Organizai` (remote `origin`, branch `master`). `.env`/`prisma/*.db` confirmados fora do histórico antes do push.
+
+### Sessão seguinte — Descoberta do UI drift, gráfico de dívidas e polimento de popups/ícones
+
+- **Descoberta:** entre a auditoria acima e esta sessão, alguém (fora destas sessões) re-skinou o app inteiro de "Terminal Luxe" para **"Cyber-Luxe Glassmorphism"** (`globals.css`, `Toast.tsx`, `ConfirmDialog.tsx` já criados com essa paleta). A seção Design System deste doc foi corrigida para refletir a realidade — ver acima.
+- **UX — Receita não estava visível:** o campo "Tipo" no modal de Nova Transação era um `<select>` escondido, sempre iniciando em "Despesa". Trocado por um toggle visível **− Despesa / + Receita** no topo do formulário; a lista de Categoria agora filtra pelo tipo escolhido (antes misturava categorias de receita e despesa no mesmo dropdown). Um resquício do emoji antigo (`${c.icon} ${c.name}`) sobrou nesse mesmo `<select>` de categoria e foi removido depois, num segundo ajuste.
+- **Novo: gráfico "Quitação de Dívidas" no dashboard** — `getDebtsSummary()` em `aggregations.ts` soma o saldo restante de todas as despesas parceladas (`(i/n)` na descrição) a partir do mês atual, projeta a curva de saldo devedor mês a mês até zerar, e informa a data prevista de quitação. Renderizado via `DebtPayoffChart.tsx` (barras) em card full-width no dashboard, com dados reais das parcelas já cadastradas (cada parcela já é uma transação futura no banco).
+- **Popups redesenhados** (skill `frontend-design` usada aqui): `Modal.tsx` estava genérico e destoava do `Toast`/`ConfirmDialog` (que já tinham a estética Cyber-Luxe). Agora os três compartilham a mesma linguagem — linha de destaque colorida no topo + etiqueta monoespaçada de contexto (`TRANSAÇÃO`, `INVESTIMENTO`, `META`, `APORTE`) — via tokens centralizados em `src/lib/accents.ts` (elimina hex duplicados que existiam em `Toast`/`ConfirmDialog`). Removido também um glow pulsante puramente decorativo do `ConfirmDialog`.
+- **Ícones de categoria:** os emojis (`🏠🍔🚗...`) renderizavam de forma inconsistente entre plataformas e destoavam do resto da UI (toda vetorial). Criado `CategoryIcon.tsx` — 12 ícones de linha (mesmo peso de traço dos ícones da sidebar), mapeados por nome de categoria, tingidos pela cor da categoria. Substituído em: tabela de Transações, lista "Recentes" do dashboard, legenda do donut de categorias e o dropdown de categoria do formulário.
+- **Skills instaladas** (globalmente em `~/.claude/skills/`, não fazem parte do repo): `security-auditor`, `frontend-design`, `tdd-orchestrator` — vieram do pacote npm `antigravity-awesome-skills`, mas foram copiadas manualmente (não via `npx ... install <nome>`, que ignora o nome da skill e instalaria as ~1935 skills do pacote inteiro). Conteúdo revisado antes de instalar — arquivos de instrução markdown, sem nada suspeito.
 
 ---
 
