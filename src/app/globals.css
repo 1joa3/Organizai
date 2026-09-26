@@ -1,26 +1,160 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════
+   DESIGN SYSTEM: Cyber-Luxe Glassmorphism
+   ═══════════════════════════════════════════════════ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg:          #030303;
+  --bg-raised:   rgba(20, 20, 25, 0.4);
+  --bg-surface:  rgba(30, 30, 40, 0.4);
+  --border:      rgba(255, 255, 255, 0.08);
+  --text:        #F8F9FA;
+  --text-dim:    #A1A1AA;
+  --text-muted:  #52525B;
+  
+  /* Neon Palette */
+  --emerald:     #CCFF00; /* Electric Lime */
+  --coral:       #FF0055; /* Cyber Pink */
+  --amber:       #FFB800; /* Vibrant Gold */
+  --blue:        #00E5FF; /* Cyan */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg:         var(--bg);
+  --color-bg-raised:  var(--bg-raised);
+  --color-bg-surface: var(--bg-surface);
+  --color-border:     var(--border);
+  --color-text:       var(--text);
+  --color-text-dim:   var(--text-dim);
+  --color-text-muted: var(--text-muted);
+  --color-emerald:    var(--emerald);
+  --color-coral:      var(--coral);
+  --color-amber:      var(--amber);
+  --color-blue:       var(--blue);
+
+  --font-sans:  var(--font-inter);
+  --font-serif: var(--font-jakarta);
+  --font-mono:  var(--font-jetbrains-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  :where(*) {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ─── Fundo Mesh Gradient Animado e Dot Grid ─── */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: 
+    radial-gradient(circle at 15% 50%, rgba(0, 229, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(255, 0, 85, 0.05) 0%, transparent 50%);
+  filter: blur(80px);
+  pointer-events: none;
+  animation: pulse-glow 10s ease-in-out infinite alternate;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+/* ─── Tipografia ─── */
+.font-display {
+  font-family: var(--font-serif), sans-serif;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.font-mono-value {
+  font-family: var(--font-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* ─── Utilitários UI ─── */
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: var(--blue);
+  color: var(--bg);
+}
+
+/* ─── Glassmorphism Cards ─── */
+.glass-card {
+  background: var(--bg-raised);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: 
+    0 4px 24px -1px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 8px 32px -4px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-panel {
+  background: var(--bg-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* ─── Animações ─── */
+@keyframes pulse-glow {
+  0% { transform: scale(1) translate(0, 0); opacity: 0.8; }
+  100% { transform: scale(1.1) translate(-2%, 2%); opacity: 1; }
 }

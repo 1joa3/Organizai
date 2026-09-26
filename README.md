@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Livro-Caixa
 
-## Getting Started
+App pessoal de finanças: transações, investimentos, metas e dashboard consolidado.
+Arquitetura, decisões técnicas, changelog e roadmap completos em [`ARQUITETURA.md`](./ARQUITETURA.md).
 
-First, run the development server:
+## Stack
+
+Next.js 16 (App Router) + Prisma + SQLite (local) + Tailwind CSS + Chart.js + Framer Motion. Ver o documento de arquitetura para justificativas e o roadmap.
+
+## Setup
 
 ```bash
+npm install
+cp .env.example .env      # ajuste AUTH_TOKEN se quiser habilitar login
+npx prisma db push        # cria o banco local (prisma/dev.db)
+npm run db:seed           # popula contas e categorias padrão
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando | Descrição |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção |
+| `npm run start` | Roda o build de produção |
+| `npm run lint` | ESLint |
+| `npm test` | Testes (Vitest) contra um banco SQLite isolado (`prisma/test.db`) |
+| `npm run test:watch` | Testes em modo watch |
+| `npm run db:seed` | Popula contas/categorias padrão |
 
-## Learn More
+## Autenticação
 
-To learn more about Next.js, take a look at the following resources:
+Single-user via `AUTH_TOKEN` no `.env`. Vazio = acesso liberado (modo dev). Definido = exige login em `/login`, que seta um cookie httpOnly (`src/proxy.ts` + `src/lib/auth.ts`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Dados sensíveis
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`prisma/dev.db` contém dados financeiros reais e **nunca** deve ser commitado — está no `.gitignore`. O mesmo vale para `.env`. Use `.env.example` como referência de variáveis.

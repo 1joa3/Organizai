@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id           String        @id @default(cuid())
+  name         String                            // "Nubank", "Carteira", "Bradesco"
+  type         String                            // corrente | poupança | carteira
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  name         String                            // "Moradia", "Alimentação"
+  type         String                            // receita | despesa
+  color        String                            // hex: "#F87171"
+  icon         String?                           // emoji ou ícone opcional
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  description String
+  amount      Decimal
+  type        String                              // receita | despesa
+  date        DateTime
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id])
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+  @@index([type])
+}
+
+model Investment {
+  id             String   @id @default(cuid())
+  asset          String                           // "Tesouro Selic 2029", "IVVB11"
+  assetType      String                           // renda_fixa | renda_variavel | cripto | fundo
+  investedAmount Decimal
+  currentAmount  Decimal
+  date           DateTime
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  @@index([date])
+}
+
+model Goal {
+  id            String    @id @default(cuid())
+  name          String                            // "Reserva de emergência"
+  targetAmount  Decimal
+  currentAmount Decimal
+  deadline      DateTime?
+  color         String    @default("#FBBF24")
+  createdAt     DateTime  @default(now())
+}
