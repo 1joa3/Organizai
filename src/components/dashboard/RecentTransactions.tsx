@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import CategoryIcon from "@/components/ui/CategoryIcon";
 import { formatCurrency, formatDateShort } from "@/lib/formatters";
 
 interface Transaction {
@@ -40,10 +41,15 @@ export default function RecentTransactions({
         >
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-inner shrink-0"
-              style={{ backgroundColor: `${t.category.color}20`, border: `1px solid ${t.category.color}40` }}
+              className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner shrink-0"
+              style={{
+                backgroundColor: `${t.category.color}15`,
+                border: `1px solid ${t.category.color}40`,
+                color: t.category.color,
+                filter: `drop-shadow(0 0 4px ${t.category.color}80)`,
+              }}
             >
-              {t.category.icon}
+              <CategoryIcon name={t.category.name} size={18} />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-white truncate">{t.description}</p>

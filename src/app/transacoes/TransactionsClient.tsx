@@ -8,6 +8,9 @@ import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import Table from "@/components/ui/Table";
 import PeriodSelector from "@/components/ui/PeriodSelector";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import CategoryIcon from "@/components/ui/CategoryIcon";
+import { useToast } from "@/components/ui/Toast";
 import { createTransaction, deleteTransaction } from "./actions";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
@@ -31,6 +34,8 @@ export default function TransactionsClient({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedType, setSelectedType] = useState("despesa");
   const [isPending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const toast = useToast();
 
   // Filtros
   const [filterType, setFilterType] = useState<string>("");
@@ -43,6 +48,9 @@ export default function TransactionsClient({
     startTransition(async () => {
       try {
         await createTransaction(formData);
+        toast.success("Transação criada", "A transação foi registrada com sucesso.");
+      } catch {
+        toast.error("Erro ao criar", "Não foi possível criar a transação.");
       } finally {
         setIsLoading(false);
         setIsModalOpen(false);
@@ -50,20 +58,32 @@ export default function TransactionsClient({
     });
   }
 
-  function handleDelete(id: string) {
-    if (confirm("Deseja realmente excluir esta transação?")) {
-      startTransition(async () => {
-        try {
-          const result = await deleteTransaction(id);
-          if (result?.error) {
-            alert("Erro: " + result.error);
-          }
-        } catch (error) {
-          console.error("Failed to delete transaction:", error);
-          alert("Ocorreu um erro ao excluir a transação.");
+  function handleDeleteClick(id: string) {
+    setDeleteTarget(id);
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    const id = deleteTarget;
+    setDeleteTarget(null);
+
+    startTransition(async () => {
+      try {
+        const result = await deleteTransaction(id);
+        if (result?.error) {
+          toast.error("Erro ao excluir", result.error);
+        } else {
+          toast.success("Transação excluída", "O registro foi removido com sucesso.");
         }
-      });
-    }
+      } catch (error) {
+        console.error("Failed to delete transaction:", error);
+        toast.error("Erro inesperado", "Ocorreu um erro ao excluir a transação.");
+      }
+    });
+  }
+
+  function handleDeleteCancel() {
+    setDeleteTarget(null);
   }
 
   const filtered = transactions.filter((t) => {
@@ -90,8 +110,9 @@ export default function TransactionsClient({
       key: "category",
       label: "Categoria",
       render: (t: any) => (
-        <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: `${t.category.color}15`, color: t.category.color, border: `1px solid ${t.category.color}30` }}>
-          {t.category.icon} {t.category.name}
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: `${t.category.color}15`, color: t.category.color, border: `1px solid ${t.category.color}30` }}>
+          <CategoryIcon name={t.category.name} size={12} />
+          {t.category.name}
         </span>
       ),
     },
@@ -122,7 +143,7 @@ export default function TransactionsClient({
       className: "w-10 text-right",
       render: (t: any) => (
         <button
-          onClick={() => handleDelete(t.id)}
+          onClick={() => handleDeleteClick(t.id)}
           className="text-text-dim hover:text-coral transition-colors"
           title="Excluir"
         >
@@ -194,11 +215,44 @@ export default function TransactionsClient({
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Nova Transação"
+        title={selectedType === "receita" ? "Nova Receita" : "Nova Despesa"}
+        eyebrow="Transação"
+        accent={selectedType === "receita" ? "emerald" : "coral"}
       >
         <form onSubmit={handleCreate} className="space-y-5">
+          <div>
+            <label className="text-xs font-medium text-text-dim uppercase tracking-wider mb-2 block">
+              Tipo
+            </label>
+            <div className="flex gap-2 p-1 bg-white/5 rounded-lg border border-white/10">
+              <button
+                type="button"
+                onClick={() => setSelectedType("despesa")}
+                className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer ${
+                  selectedType === "despesa"
+                    ? "bg-coral/15 text-coral border border-coral/30"
+                    : "text-text-dim hover:text-white border border-transparent"
+                }`}
+              >
+                − Despesa
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedType("receita")}
+                className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer ${
+                  selectedType === "receita"
+                    ? "bg-emerald/15 text-emerald border border-emerald/30"
+                    : "text-text-dim hover:text-white border border-transparent"
+                }`}
+              >
+                + Receita
+              </button>
+            </div>
+            <input type="hidden" name="type" value={selectedType} />
+          </div>
+
           <Input name="description" label="Descrição" required placeholder="Ex: Supermercado" />
-          
+
           <div className="grid grid-cols-2 gap-4">
             <Input name="amount" label="Valor Total" type="number" step="0.01" required placeholder="0.00" />
             <Input name="date" label="Data" type="date" required defaultValue={new Date().toISOString().split('T')[0]} />
@@ -206,38 +260,27 @@ export default function TransactionsClient({
 
           <div className="grid grid-cols-2 gap-4">
             <Select
-              name="type"
-              label="Tipo"
-              required
-              options={[
-                { value: "despesa", label: "Despesa" },
-                { value: "receita", label: "Receita" },
-              ]}
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-            />
-            <Select
               name="accountId"
               label="Conta"
               required
               options={accounts.map((a) => ({ value: a.id, label: a.name }))}
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <Select
               name="categoryId"
               label="Categoria"
               required
-              options={categories.map((c) => ({
-                value: c.id,
-                label: `${c.icon || ""} ${c.name}`,
-              }))}
+              options={categories
+                .filter((c) => c.type === selectedType)
+                .map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                }))}
             />
-            {selectedType === "despesa" && (
-              <Input name="installments" label="Parcelas" type="number" min="1" max="120" defaultValue="1" />
-            )}
           </div>
+
+          {selectedType === "despesa" && (
+            <Input name="installments" label="Parcelas" type="number" min="1" max="120" defaultValue="1" />
+          )}
 
           <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>
@@ -249,6 +292,18 @@ export default function TransactionsClient({
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Dialog para exclusão */}
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        title="Excluir transação"
+        message="Esta ação é irreversível. Deseja realmente excluir esta transação?"
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+      />
     </div>
   );
 }

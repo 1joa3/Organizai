@@ -109,7 +109,7 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
       )}
 
       {/* Modal Nova Meta */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nova Meta">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nova Meta" eyebrow="Meta" accent="amber">
         <form onSubmit={handleCreate} className="space-y-5">
           <Input name="name" label="Nome da Meta" required placeholder="Ex: Reserva de Emergência" />
           
@@ -137,7 +137,7 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
       </Modal>
 
       {/* Modal Aporte */}
-      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={`Aporte: ${selectedGoal?.name}`}>
+      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={`Aporte: ${selectedGoal?.name}`} eyebrow="Aporte" accent="emerald">
         <form onSubmit={handleAddAmount} className="space-y-5">
           <Input name="amount" label="Valor do Aporte" type="number" step="0.01" required autoFocus />
           <div className="pt-4 border-t border-white/10 flex justify-end gap-3">

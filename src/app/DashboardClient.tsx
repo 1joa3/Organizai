@@ -6,9 +6,10 @@ import KpiStrip from "@/components/dashboard/KpiStrip";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import DonutCategories from "@/components/charts/DonutCategories";
 import LinePatrimony from "@/components/charts/LinePatrimony";
+import DebtPayoffChart from "@/components/charts/DebtPayoffChart";
 import GoalProgressBar from "@/components/charts/GoalProgressBar";
 import PeriodSelector from "@/components/ui/PeriodSelector";
-import { formatCurrency, calcPercent } from "@/lib/formatters";
+import { formatCurrency, formatMonthYear, calcPercent } from "@/lib/formatters";
 
 interface Props {
   monthlyTotals: { receitas: number; despesas: number; saldo: number };
@@ -33,6 +34,13 @@ interface Props {
     color: string;
     deadline: string | null;
   }[];
+  debtsSummary: {
+    debts: { name: string; color: string; totalInstallments: number; remainingInstallments: number; remainingAmount: number }[];
+    totalDebt: number;
+    payoffDate: string | null;
+    monthsToPayoff: number;
+    timeline: { label: string; remaining: number }[];
+  };
   currentMonth: string;
   month: number;
   year: number;
@@ -46,6 +54,7 @@ export default function DashboardClient({
   recentTransactions,
   goals,
   installmentsSummary,
+  debtsSummary,
   currentMonth,
   month,
   year,
@@ -96,6 +105,35 @@ export default function DashboardClient({
             Evolução Patrimonial
           </h2>
           <LinePatrimony data={patrimonyEvolution} />
+        </motion.div>
+
+        {/* Dívidas parceladas em aberto */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="col-span-12 glass-card p-6"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <h2 className="font-display text-lg text-white">Quitação de Dívidas</h2>
+            <div className="flex gap-8">
+              <div>
+                <p className="text-[10px] font-medium text-text-dim uppercase tracking-wider mb-1">Total em dívidas</p>
+                <p className="font-mono-value text-lg text-amber drop-shadow-[0_0_8px_rgba(255,184,0,0.3)]">
+                  {formatCurrency(debtsSummary.totalDebt)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium text-text-dim uppercase tracking-wider mb-1">Previsão de quitação</p>
+                <p className="font-mono-value text-lg text-white">
+                  {debtsSummary.payoffDate
+                    ? `${formatMonthYear(debtsSummary.payoffDate)} (${debtsSummary.monthsToPayoff} ${debtsSummary.monthsToPayoff === 1 ? "mês" : "meses"})`
+                    : "—"}
+                </p>
+              </div>
+            </div>
+          </div>
+          <DebtPayoffChart timeline={debtsSummary.timeline} />
         </motion.div>
 
         {/* Donut de categorias */}

@@ -7,6 +7,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import CategoryIcon from "@/components/ui/CategoryIcon";
 import { formatCurrency } from "@/lib/formatters";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -100,10 +101,12 @@ export default function DonutCategories({ data }: DonutCategoriesProps) {
             <div key={d.name} className="group">
               <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div
-                    className="w-3 h-3 rounded-full shadow-inner shrink-0"
-                    style={{ backgroundColor: d.color, boxShadow: `0 0 8px ${d.color}60` }}
-                  />
+                  <span
+                    className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: `${d.color}15`, border: `1px solid ${d.color}30`, color: d.color }}
+                  >
+                    <CategoryIcon name={d.name} size={11} />
+                  </span>
                   <span className="text-sm font-medium text-text-dim group-hover:text-white transition-colors truncate">{d.name}</span>
                 </div>
                 <span className="font-mono-value text-[10px] text-text-muted shrink-0">

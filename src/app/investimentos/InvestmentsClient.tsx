@@ -120,7 +120,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
       )}
 
       {/* Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Aporte">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Aporte" eyebrow="Investimento" accent="amber">
         <form onSubmit={handleCreate} className="space-y-5">
           <Input name="asset" label="Ativo" required placeholder="Ex: Tesouro Selic 2029" />
           

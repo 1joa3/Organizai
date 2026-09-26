@@ -5,6 +5,7 @@ import {
   getExpensesByCategory,
   getInstallmentsSummary,
   getInvestmentTotals,
+  getDebtsSummary,
 } from "./aggregations";
 
 const YEAR = 2024;
@@ -206,5 +207,62 @@ describe("getInvestmentTotals", () => {
       returnAmount: 0,
       returnPercent: 0,
     });
+  });
+});
+
+describe("getDebtsSummary", () => {
+  // getDebtsSummary usa a data real (new Date()), então as parcelas de teste
+  // precisam ser relativas ao mês atual, não ao período fixo (YEAR/MONTH) usado acima.
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  it("soma o saldo devedor restante e projeta a curva de quitação mês a mês", async () => {
+    for (let i = 0; i < 3; i++) {
+      await prisma.transaction.create({
+        data: {
+          description: `Notebook (${i + 1}/3)`,
+          amount: 100,
+          type: "despesa",
+          date: new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + i, 1),
+          accountId,
+          categoryId: categoryDespesaId,
+        },
+      });
+    }
+
+    const summary = await getDebtsSummary();
+
+    expect(summary.totalDebt).toBe(300);
+    expect(summary.monthsToPayoff).toBe(3);
+    expect(summary.timeline).toHaveLength(3);
+    expect(summary.timeline.map((t) => t.remaining)).toEqual([300, 200, 100]);
+    expect(summary.debts).toHaveLength(1);
+    expect(summary.debts[0]).toMatchObject({
+      name: "Notebook",
+      remainingInstallments: 3,
+      remainingAmount: 300,
+    });
+  });
+
+  it("ignora parcelamentos já totalmente quitados (todas as parcelas no passado)", async () => {
+    for (let i = 0; i < 2; i++) {
+      await prisma.transaction.create({
+        data: {
+          description: `Fone (${i + 1}/2)`,
+          amount: 50,
+          type: "despesa",
+          date: new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() - 3 + i, 1),
+          accountId,
+          categoryId: categoryDespesaId,
+        },
+      });
+    }
+
+    const summary = await getDebtsSummary();
+
+    expect(summary.totalDebt).toBe(0);
+    expect(summary.debts).toHaveLength(0);
+    expect(summary.payoffDate).toBeNull();
+    expect(summary.timeline).toHaveLength(0);
   });
 });

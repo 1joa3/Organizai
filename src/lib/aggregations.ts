@@ -197,3 +197,101 @@ export async function getInstallmentsSummary(year: number, month: number) {
     targetAmount: data.targetAmount,
   })).sort((a, b) => b.total - a.total);
 }
+
+/**
+ * Resumo de dívidas parceladas em aberto: valor total restante, previsão de
+ * quitação e a curva de saldo devedor mês a mês até zerar.
+ */
+export async function getDebtsSummary() {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const transactions = await prisma.transaction.findMany({
+    where: { type: "despesa" },
+    include: { category: true },
+  });
+
+  const installments = transactions.filter((t) => /\(\d+\/\d+\)$/.test(t.description));
+
+  interface DebtGroup {
+    color: string;
+    totalInstallments: number;
+    remainingInstallments: number;
+    remainingAmount: number;
+    payoffDate: Date;
+  }
+
+  const groups = new Map<string, DebtGroup>();
+  const monthlyDue = new Map<string, number>();
+
+  installments.forEach((t) => {
+    const match = t.description.match(/\((\d+)\/(\d+)\)$/);
+    if (!match) return;
+    const totalInst = parseInt(match[2]);
+    const baseName = t.description.replace(/\s*\(\d+\/\d+\)$/, "").trim();
+    const amount = Number(t.amount);
+    const isFuture = t.date >= startOfMonth;
+
+    const existing = groups.get(baseName) ?? {
+      color: t.category?.color ?? "#8884d8",
+      totalInstallments: totalInst,
+      remainingInstallments: 0,
+      remainingAmount: 0,
+      payoffDate: t.date,
+    };
+
+    if (isFuture) {
+      existing.remainingInstallments += 1;
+      existing.remainingAmount += amount;
+
+      const key = `${t.date.getFullYear()}-${String(t.date.getMonth() + 1).padStart(2, "0")}`;
+      monthlyDue.set(key, (monthlyDue.get(key) ?? 0) + amount);
+    }
+    if (t.date > existing.payoffDate) existing.payoffDate = t.date;
+
+    groups.set(baseName, existing);
+  });
+
+  const debts = Array.from(groups.entries())
+    .map(([name, data]) => ({ name, ...data }))
+    .filter((d) => d.remainingAmount > 0)
+    .sort((a, b) => b.remainingAmount - a.remainingAmount);
+
+  const totalDebt = debts.reduce((sum, d) => sum + d.remainingAmount, 0);
+  const payoffDate = debts.length
+    ? debts.reduce((max, d) => (d.payoffDate > max ? d.payoffDate : max), debts[0].payoffDate)
+    : null;
+
+  // Curva de saldo devedor mês a mês, do mês atual até quitar tudo
+  const timeline: { label: string; remaining: number }[] = [];
+  let remaining = totalDebt;
+  const cursor = new Date(startOfMonth);
+  let guard = 0;
+
+  while (remaining > 0.01 && guard < 60) {
+    timeline.push({
+      label: cursor.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }),
+      remaining,
+    });
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+    remaining -= monthlyDue.get(key) ?? 0;
+    cursor.setMonth(cursor.getMonth() + 1);
+    guard++;
+  }
+
+  const monthsToPayoff = timeline.length;
+
+  return {
+    debts: debts.map((d) => ({
+      name: d.name,
+      color: d.color,
+      totalInstallments: d.totalInstallments,
+      remainingInstallments: d.remainingInstallments,
+      remainingAmount: d.remainingAmount,
+    })),
+    totalDebt,
+    payoffDate,
+    monthsToPayoff,
+    timeline,
+  };
+}

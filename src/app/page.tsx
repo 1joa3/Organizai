@@ -6,6 +6,7 @@ import {
   getRecentTransactions,
   getGoalsSummary,
   getInstallmentsSummary,
+  getDebtsSummary,
 } from "@/lib/aggregations";
 import DashboardClient from "./DashboardClient";
 
@@ -29,6 +30,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     recentTransactions,
     goals,
     installmentsSummary,
+    debtsSummary,
   ] = await Promise.all([
     getMonthlyTotals(year, month),
     getExpensesByCategory(year, month),
@@ -37,6 +39,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     getRecentTransactions(5),
     getGoalsSummary(),
     getInstallmentsSummary(year, month),
+    getDebtsSummary(),
   ]);
 
   // Serializar transações recentes
@@ -60,6 +63,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     deadline: g.deadline?.toISOString() || null,
   }));
 
+  const serializedDebtsSummary = {
+    ...debtsSummary,
+    payoffDate: debtsSummary.payoffDate?.toISOString() ?? null,
+  };
+
   return (
     <DashboardClient
       monthlyTotals={monthlyTotals}
@@ -69,6 +77,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       recentTransactions={serializedTransactions}
       goals={serializedGoals}
       installmentsSummary={installmentsSummary}
+      debtsSummary={serializedDebtsSummary}
       currentMonth={new Date(year, month - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
       month={month}
       year={year}
