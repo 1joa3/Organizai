@@ -234,7 +234,7 @@ Esses tokens vivem em `src/app/globals.css` (`:root`) e são expostos como class
 
 | Fase | Escopo | Entregável | Status |
 |---|---|---|---|
-| 1 | Setup | Projeto Next.js + Prisma + banco no Supabase, seed de categorias | ✅ (banco local em SQLite; Supabase/Postgres ainda não provisionado — ver Débitos técnicos) |
+| 1 | Setup | Projeto Next.js + Prisma + banco no Supabase, seed de categorias | ✅ |
 | 2 | Transações | CRUD completo com filtro por mês/categoria, tabela com sort | ✅ |
 | 3 | Investimentos | Registro de ativos + aportes, cálculo de evolução vs aportado | ✅ (reconectado ao dashboard em 2026-09-26, ver Changelog) |
 | 4 | Metas | Cadastro com valor alvo + prazo, progresso automático | ✅ |
@@ -263,6 +263,11 @@ Esses tokens vivem em `src/app/globals.css` (`:root`) e são expostos como class
 - **Popups redesenhados** (skill `frontend-design` usada aqui): `Modal.tsx` estava genérico e destoava do `Toast`/`ConfirmDialog` (que já tinham a estética Cyber-Luxe). Agora os três compartilham a mesma linguagem — linha de destaque colorida no topo + etiqueta monoespaçada de contexto (`TRANSAÇÃO`, `INVESTIMENTO`, `META`, `APORTE`) — via tokens centralizados em `src/lib/accents.ts` (elimina hex duplicados que existiam em `Toast`/`ConfirmDialog`). Removido também um glow pulsante puramente decorativo do `ConfirmDialog`.
 - **Ícones de categoria:** os emojis (`🏠🍔🚗...`) renderizavam de forma inconsistente entre plataformas e destoavam do resto da UI (toda vetorial). Criado `CategoryIcon.tsx` — 12 ícones de linha (mesmo peso de traço dos ícones da sidebar), mapeados por nome de categoria, tingidos pela cor da categoria. Substituído em: tabela de Transações, lista "Recentes" do dashboard, legenda do donut de categorias e o dropdown de categoria do formulário.
 - **Skills instaladas** (globalmente em `~/.claude/skills/`, não fazem parte do repo): `security-auditor`, `frontend-design`, `tdd-orchestrator` — vieram do pacote npm `antigravity-awesome-skills`, mas foram copiadas manualmente (não via `npx ... install <nome>`, que ignora o nome da skill e instalaria as ~1935 skills do pacote inteiro). Conteúdo revisado antes de instalar — arquivos de instrução markdown, sem nada suspeito.
+- **Responsividade mobile:** grids rígidos de 2 colunas nos modais agora empilham abaixo de `sm`; headers de Investimentos/Metas, `KpiStrip` e `PeriodSelector` ajustados para telas pequenas.
+- **Layout de cards no mobile:** `Table.tsx` ganhou `renderMobileItem` opcional — abaixo de `md` mostra uma lista de cards em vez da tabela com scroll horizontal. Usado em Transações.
+- **Criar categoria inline:** `createCategory` em `actions.ts` + mini-formulário (nome + cor) dentro do próprio modal de Nova Transação, sem precisar de uma tela separada de categorias.
+- **Deploy — banco migrado para Postgres (Supabase):** `schema.prisma` passou de `sqlite` para `postgresql` com `directUrl` (conexão direta, só para migrations — a `url` normal usa o pooler/pgbouncer). Migration inicial aplicada em produção. `prisma/seed-production.ts` criado (categorias + 1 conta, sem os dados de exemplo do `seed.ts` de dev). Testes passaram a rodar isolados no schema `test` do mesmo Postgres (não o `public`) via `DIRECT_URL` com `?schema=test` — zero infraestrutura extra.
+- **Deploy — `AUTH_TOKEN` definido:** gerado um token aleatório de 32 bytes para proteger o acesso antes de publicar.
 
 ---
 
@@ -270,10 +275,9 @@ Esses tokens vivem em `src/app/globals.css` (`:root`) e são expostos como class
 
 | Item | Descrição | Risco |
 |---|---|---|
-| Banco em SQLite | `schema.prisma` usa `provider = "sqlite"`, divergindo do Postgres/Supabase planejado originalmente. Funciona bem local, mas não roda em serverless (Vercel) sem migrar para Postgres antes do deploy | Alto — bloqueia deploy |
-| `AUTH_TOKEN` vazio | Auth está desabilitada por padrão em dev. Antes de expor a app publicamente, definir um token forte em produção | Alto se for para produção |
 | Sem CI | Não há GitHub Actions/pipeline rodando `tsc`, `lint` e `vitest` automaticamente a cada push | Médio |
 | Categorias/contas fixas no seed | `installments` e parcelamento assumem 1 transação por parcela/mês; edição de uma transação parcelada não recalcula as demais parcelas | Baixo/médio |
+| Testes dependem de rede | A suíte roda contra o Postgres do Supabase (schema `test`), então precisa de internet e fica mais lenta (~40s) que um SQLite local. Sem isso, não tem como testar sem infraestrutura extra (Docker, etc.) | Baixo |
 
 ---
 
@@ -281,12 +285,12 @@ Esses tokens vivem em `src/app/globals.css` (`:root`) e são expostos como class
 
 Por ordem sugerida de valor/esforço:
 
-1. **Migrar para Postgres antes do deploy** — trocar `provider = "sqlite"` por `"postgresql"` no schema, provisionar Supabase/Neon, e rodar `prisma migrate` em vez de `db push`. Pré-requisito para publicar no Vercel.
-2. **CI básico (GitHub Actions)** — workflow rodando `npm run build`, `npx tsc --noEmit` e `npm test` a cada push/PR. Baixo esforço, alto valor para não regredir o que foi corrigido nesta sessão.
-3. **Edição de transações parceladas** — hoje só a criação gera as N parcelas; `updateTransaction` não sabe que uma transação faz parte de um grupo. Vale um `installmentGroupId` no schema para editar/excluir o grupo inteiro.
-4. **Editar investimentos com histórico** — `Investment.currentAmount` é sobrescrito a cada atualização, perdendo a evolução histórica do ativo. Um model `InvestmentSnapshot` (data + valor) daria uma curva de evolução por ativo, não só o patrimônio total.
-5. **Modo claro** (Fase 6, pendente) — os tokens CSS já estão centralizados em `globals.css`, então é majoritariamente definir a paleta clara e um toggle persistido em cookie/localStorage.
-6. **PWA mobile** (Fase 6, pendente) — `manifest.json` + service worker básico (cache do shell) via `next-pwa` ou manual.
-7. **Exportar mais do que transações** — o CSV cobre só `/transacoes`; investimentos e metas também se beneficiariam de export para backup/planilha.
-8. **Testes de componentes** — a stack prevê Testing Library além do Vitest; hoje só há testes de lógica pura (`lib/`). Cobrir `TransactionsClient` (criação, exclusão, filtro) e `PeriodSelector` traria confiança na camada de UI.
-9. **Rate limiting / lockout no login** — o form de login atual aceita tentativas ilimitadas de token; um limite simples por IP/cookie evita força bruta caso a app fique pública.
+1. **CI básico (GitHub Actions)** — workflow rodando `npm run build`, `npx tsc --noEmit` e `npm test` a cada push/PR. Baixo esforço, alto valor para não regredir o que foi corrigido nesta sessão.
+2. **Edição de transações parceladas** — hoje só a criação gera as N parcelas; `updateTransaction` não sabe que uma transação faz parte de um grupo. Vale um `installmentGroupId` no schema para editar/excluir o grupo inteiro.
+3. **Editar investimentos com histórico** — `Investment.currentAmount` é sobrescrito a cada atualização, perdendo a evolução histórica do ativo. Um model `InvestmentSnapshot` (data + valor) daria uma curva de evolução por ativo, não só o patrimônio total.
+4. **Modo claro** (Fase 6, pendente) — os tokens CSS já estão centralizados em `globals.css`, então é majoritariamente definir a paleta clara e um toggle persistido em cookie/localStorage.
+5. **PWA mobile** (Fase 6, pendente) — `manifest.json` + service worker básico (cache do shell) via `next-pwa` ou manual.
+6. **Exportar mais do que transações** — o CSV cobre só `/transacoes`; investimentos e metas também se beneficiariam de export para backup/planilha.
+7. **Testes de componentes** — a stack prevê Testing Library além do Vitest; hoje só há testes de lógica pura (`lib/`). Cobrir `TransactionsClient` (criação, exclusão, filtro) e `PeriodSelector` traria confiança na camada de UI.
+8. **Rate limiting / lockout no login** — o form de login atual aceita tentativas ilimitadas de token; um limite simples por IP/cookie evita força bruta caso a app fique pública.
+9. **Editar/excluir categorias e contas** — hoje só dá para criar; renomear cor/nome ou remover uma categoria sem uso precisa ser feito direto no banco.
