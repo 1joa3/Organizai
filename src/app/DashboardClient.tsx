@@ -114,9 +114,9 @@ export default function DashboardClient({
           transition={{ delay: 0.25, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="col-span-12 glass-card p-6"
         >
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
             <h2 className="font-display text-lg text-white">Quitação de Dívidas</h2>
-            <div className="flex gap-8">
+            <div className="flex flex-wrap gap-6 sm:gap-8">
               <div>
                 <p className="text-[10px] font-medium text-text-dim uppercase tracking-wider mb-1">Total em dívidas</p>
                 <p className="font-mono-value text-lg text-amber drop-shadow-[0_0_8px_rgba(255,184,0,0.3)]">

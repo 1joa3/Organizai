@@ -52,7 +52,7 @@ export default function KpiStrip({
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
       {kpis.map((kpi, i) => (
         <motion.div
           key={kpi.label}

@@ -42,7 +42,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-between items-center"
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
           <h1 className="font-display text-4xl text-white tracking-tight">Investimentos</h1>
@@ -136,7 +136,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
             ]}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input name="investedAmount" label="Valor Investido" type="number" step="0.01" required />
             <Input name="currentAmount" label="Valor Atual" type="number" step="0.01" required />
           </div>

@@ -253,12 +253,12 @@ export default function TransactionsClient({
 
           <Input name="description" label="Descrição" required placeholder="Ex: Supermercado" />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input name="amount" label="Valor Total" type="number" step="0.01" required placeholder="0.00" />
             <Input name="date" label="Data" type="date" required defaultValue={new Date().toISOString().split('T')[0]} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               name="accountId"
               label="Conta"

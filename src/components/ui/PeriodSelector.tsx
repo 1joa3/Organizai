@@ -24,15 +24,15 @@ export default function PeriodSelector({ month, year }: PeriodSelectorProps) {
   const years = Array.from({ length: 6 }, (_, i) => year + 2 - i);
 
   return (
-    <div className="flex gap-3">
-      <div className="w-40">
+    <div className="flex flex-wrap gap-3">
+      <div className="flex-1 min-w-[140px] sm:flex-none sm:w-40">
         <Select
           value={String(month)}
           onChange={(e) => navigate(Number(e.target.value), year)}
           options={MONTHS.map((label, i) => ({ value: String(i + 1), label }))}
         />
       </div>
-      <div className="w-28">
+      <div className="flex-1 min-w-[100px] sm:flex-none sm:w-28">
         <Select
           value={String(year)}
           onChange={(e) => navigate(month, Number(e.target.value))}

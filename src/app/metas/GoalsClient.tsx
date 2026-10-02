@@ -40,7 +40,7 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-between items-center"
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
           <h1 className="font-display text-4xl text-white tracking-tight">Metas</h1>
@@ -113,12 +113,12 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
         <form onSubmit={handleCreate} className="space-y-5">
           <Input name="name" label="Nome da Meta" required placeholder="Ex: Reserva de Emergência" />
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input name="targetAmount" label="Valor Alvo" type="number" step="0.01" required />
             <Input name="currentAmount" label="Valor Atual (Opcional)" type="number" step="0.01" defaultValue="0" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input name="deadline" label="Prazo (Opcional)" type="date" />
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-text-dim uppercase tracking-wider">Cor de Destaque</label>
