@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Account {
@@ -27,7 +28,7 @@ model Category {
 model Transaction {
   id          String   @id @default(cuid())
   description String
-  amount      Decimal
+  amount      Decimal  @db.Decimal(12, 2)
   type        String                              // receita | despesa
   date        DateTime
   accountId   String
@@ -44,8 +45,8 @@ model Investment {
   id             String   @id @default(cuid())
   asset          String                           // "Tesouro Selic 2029", "IVVB11"
   assetType      String                           // renda_fixa | renda_variavel | cripto | fundo
-  investedAmount Decimal
-  currentAmount  Decimal
+  investedAmount Decimal  @db.Decimal(12, 2)
+  currentAmount  Decimal  @db.Decimal(12, 2)
   date           DateTime
   notes          String?
   createdAt      DateTime @default(now())
@@ -56,8 +57,8 @@ model Investment {
 model Goal {
   id            String    @id @default(cuid())
   name          String                            // "Reserva de emergência"
-  targetAmount  Decimal
-  currentAmount Decimal
+  targetAmount  Decimal   @db.Decimal(12, 2)
+  currentAmount Decimal   @db.Decimal(12, 2)
   deadline      DateTime?
   color         String    @default("#FBBF24")
   createdAt     DateTime  @default(now())
