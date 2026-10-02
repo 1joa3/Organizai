@@ -156,6 +156,53 @@ export default function TransactionsClient({
     },
   ];
 
+  function renderMobileItem(t: any) {
+    return (
+      <div className="glass-panel p-4 flex items-center gap-3">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner shrink-0"
+          style={{
+            backgroundColor: `${t.category.color}15`,
+            border: `1px solid ${t.category.color}40`,
+            color: t.category.color,
+            filter: `drop-shadow(0 0 4px ${t.category.color}80)`,
+          }}
+        >
+          <CategoryIcon name={t.category.name} size={18} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-white truncate">{t.description}</p>
+          <p className="text-xs text-text-dim mt-0.5 truncate">
+            {t.category.name} <span className="text-white/20">•</span> {t.account.name}
+          </p>
+          <p className="text-[11px] text-text-muted font-mono-value mt-0.5">{formatDate(t.date)}</p>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <span
+            className={`font-mono-value text-sm font-medium ${
+              t.type === "receita" ? "text-emerald drop-shadow-[0_0_8px_rgba(204,255,0,0.3)]" : "text-coral drop-shadow-[0_0_8px_rgba(255,0,85,0.3)]"
+            }`}
+          >
+            {t.type === "receita" ? "+" : "−"}
+            {formatCurrency(Number(t.amount))}
+          </span>
+          <button
+            onClick={() => handleDeleteClick(t.id)}
+            className="text-text-dim hover:text-coral transition-colors"
+            title="Excluir"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -206,9 +253,8 @@ export default function TransactionsClient({
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="glass-card overflow-hidden"
       >
-        <Table columns={columns} data={filtered} keyExtractor={(t) => t.id} />
+        <Table columns={columns} data={filtered} keyExtractor={(t) => t.id} renderMobileItem={renderMobileItem} />
       </motion.div>
 
       {/* Modal Nova Transação */}
