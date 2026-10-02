@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { createTransaction, updateTransaction, deleteTransaction, createCategory } from "./actions";
 import { formatCurrency, formatDate, formatDateInput } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
+import ImportModal from "./ImportModal";
 
 type BaseProps = {
   transactions: any[];
@@ -31,6 +32,7 @@ export default function TransactionsClient({
   year,
 }: BaseProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedType, setSelectedType] = useState("despesa");
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
@@ -329,13 +331,22 @@ export default function TransactionsClient({
             />
           </div>
         </div>
-        <Button
-          variant="glass"
-          size="sm"
-          onClick={() => exportTransactionsToCSV(filtered)}
-        >
-          Exportar CSV
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            variant="glass"
+            size="sm"
+            onClick={() => setIsImportModalOpen(true)}
+          >
+            Importar Fatura
+          </Button>
+          <Button
+            variant="glass"
+            size="sm"
+            onClick={() => exportTransactionsToCSV(filtered)}
+          >
+            Exportar CSV
+          </Button>
+        </div>
       </motion.div>
 
       {/* Tabela */}
@@ -520,6 +531,14 @@ export default function TransactionsClient({
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
         variant="danger"
+      />
+
+      {/* Modal de importação */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        accounts={accounts}
+        categories={categories}
       />
     </div>
   );

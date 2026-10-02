@@ -268,6 +268,9 @@ Esses tokens vivem em `src/app/globals.css` (`:root`) e são expostos como class
 - **Criar categoria inline:** `createCategory` em `actions.ts` + mini-formulário (nome + cor) dentro do próprio modal de Nova Transação, sem precisar de uma tela separada de categorias.
 - **Deploy — banco migrado para Postgres (Supabase):** `schema.prisma` passou de `sqlite` para `postgresql` com `directUrl` (conexão direta, só para migrations — a `url` normal usa o pooler/pgbouncer). Migration inicial aplicada em produção. `prisma/seed-production.ts` criado (categorias + 1 conta, sem os dados de exemplo do `seed.ts` de dev). Testes passaram a rodar isolados no schema `test` do mesmo Postgres (não o `public`) via `DIRECT_URL` com `?schema=test` — zero infraestrutura extra.
 - **Deploy — `AUTH_TOKEN` definido:** gerado um token aleatório de 32 bytes para proteger o acesso antes de publicar.
+- **Editar transação (incluindo categoria):** `updateTransaction` já existia em `actions.ts` sem nenhuma UI que o chamasse. Adicionado botão de editar (lápis) em cada linha/card, reaproveitando o modal de Nova Transação em modo edição (campo Parcelas some, pois editar não re-divide em novas parcelas).
+- **Correção de segurança:** `next` tinha uma vulnerabilidade crítica de RCE (GHSA-vcvr-r3jv-pc5j, `next/og ImageResponse`) nas versões 16.2.0–16.3.5 — descoberta via `npm audit` ao instalar uma dependência nova, corrigida atualizando para `16.3.8`.
+- **Importar fatura/extrato (CSV):** novo botão "Importar Fatura" em Transações abre um fluxo de upload → mapeamento de colunas (Data/Descrição/Valor, com auto-detecção pelo nome do header) → pré-visualização → confirmação. Parser de CSV próprio em `src/lib/csvImport.ts` (sem dependência externa — a lib óbvia, `xlsx`/SheetJS, tinha 2 CVEs high sem correção no npm no momento). Detecta `,`/`;` como delimitador, formatos de data BR/ISO e valor BR (`1.234,56`)/internacional, e deduplica contra transações já existentes (mesma conta+data+descrição+valor) para permitir reimportar o mesmo arquivo sem duplicar. Suporte a `.xlsx` binário real ficou de fora (débito técnico abaixo); PDF de fatura fica para uma próxima sessão, mediante exemplo do layout.
 
 ---
 
@@ -278,6 +281,9 @@ Esses tokens vivem em `src/app/globals.css` (`:root`) e são expostos como class
 | Sem CI | Não há GitHub Actions/pipeline rodando `tsc`, `lint` e `vitest` automaticamente a cada push | Médio |
 | Categorias/contas fixas no seed | `installments` e parcelamento assumem 1 transação por parcela/mês; edição de uma transação parcelada não recalcula as demais parcelas | Baixo/médio |
 | Testes dependem de rede | A suíte roda contra o Postgres do Supabase (schema `test`), então precisa de internet e fica mais lenta (~40s) que um SQLite local. Sem isso, não tem como testar sem infraestrutura extra (Docker, etc.) | Baixo |
+| Import de fatura só lê CSV | `.xlsx` binário real (não CSV com extensão trocada) não é suportado — evitamos a lib `xlsx`/SheetJS por 2 CVEs high sem correção no npm. Dá pra adicionar `exceljs` (sem esses CVEs) se um arquivo `.xlsx` de verdade for necessário | Baixo |
+| Import de fatura sem leitura de PDF | Fatura em PDF precisa ser convertida pro banco exportar CSV antes, ou aguardar uma próxima sessão com um exemplo real de layout pra calibrar o parser | Baixo |
+| `npm audit` com 3 high restantes | `deepmerge-ts` (via `@prisma/config`, cadeia de dependência do CLI do Prisma, não do runtime) tem um DoS por stack exhaustion; correção automática baixaria o Prisma pra uma versão antiga. Risco baixo (ferramenta de dev, não exposta publicamente) | Baixo |
 
 ---
 

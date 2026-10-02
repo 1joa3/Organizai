@@ -160,3 +160,85 @@ export async function createCategory(formData: FormData) {
   revalidatePath("/");
   return { success: true, category };
 }
+
+interface ImportRow {
+  date: string;
+  description: string;
+  amount: number;
+  type: string;
+}
+
+/**
+ * Importa transações em lote (ex: fatura/extrato exportado em CSV).
+ * Ignora linhas que já existem (mesma conta + data + descrição + valor)
+ * para permitir reimportar um arquivo sem duplicar.
+ */
+export async function importTransactions(input: {
+  accountId: string;
+  categoryId: string;
+  rows: ImportRow[];
+}) {
+  const { accountId, categoryId, rows } = input;
+
+  if (!accountId || !categoryId) {
+    return { error: "Selecione a conta e a categoria" };
+  }
+  if (!rows || rows.length === 0) {
+    return { error: "Nenhuma linha válida para importar" };
+  }
+
+  const parsedRows = rows
+    .map((r) => ({ ...r, date: new Date(r.date) }))
+    .filter((r) => !isNaN(r.date.getTime()) && r.description && r.amount > 0);
+
+  if (parsedRows.length === 0) {
+    return { error: "Nenhuma linha válida para importar" };
+  }
+
+  const timestamps = parsedRows.map((r) => r.date.getTime());
+  const minDate = new Date(Math.min(...timestamps));
+  const maxDate = new Date(Math.max(...timestamps));
+
+  const existing = await prisma.transaction.findMany({
+    where: { accountId, date: { gte: minDate, lte: maxDate } },
+    select: { date: true, description: true, amount: true },
+  });
+  const existingKeys = new Set(
+    existing.map((e) => `${e.date.getTime()}|${e.description}|${Number(e.amount).toFixed(2)}`)
+  );
+
+  const toCreate: {
+    description: string;
+    amount: number;
+    type: string;
+    date: Date;
+    accountId: string;
+    categoryId: string;
+  }[] = [];
+  let skipped = 0;
+
+  for (const row of parsedRows) {
+    const key = `${row.date.getTime()}|${row.description}|${row.amount.toFixed(2)}`;
+    if (existingKeys.has(key)) {
+      skipped++;
+      continue;
+    }
+    existingKeys.add(key); // evita duplicar dentro do próprio arquivo
+    toCreate.push({
+      description: row.description,
+      amount: row.amount,
+      type: row.type === "receita" ? "receita" : "despesa",
+      date: row.date,
+      accountId,
+      categoryId,
+    });
+  }
+
+  if (toCreate.length > 0) {
+    await prisma.transaction.createMany({ data: toCreate });
+  }
+
+  revalidatePath("/transacoes");
+  revalidatePath("/");
+  return { success: true, imported: toCreate.length, skipped };
+}
