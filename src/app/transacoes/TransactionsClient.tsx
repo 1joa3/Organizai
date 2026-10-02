@@ -11,8 +11,8 @@ import PeriodSelector from "@/components/ui/PeriodSelector";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { useToast } from "@/components/ui/Toast";
-import { createTransaction, deleteTransaction, createCategory } from "./actions";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { createTransaction, updateTransaction, deleteTransaction, createCategory } from "./actions";
+import { formatCurrency, formatDate, formatDateInput } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
 
 type BaseProps = {
@@ -33,6 +33,7 @@ export default function TransactionsClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedType, setSelectedType] = useState("despesa");
+  const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
   const [isPending, startTransition] = useTransition();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const toast = useToast();
@@ -75,13 +76,26 @@ export default function TransactionsClient({
     });
   }
 
+  function openCreateModal() {
+    setEditingTransaction(null);
+    setSelectedType("despesa");
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(t: any) {
+    setEditingTransaction(t);
+    setSelectedType(t.type);
+    setIsModalOpen(true);
+  }
+
   function closeModal() {
     setIsModalOpen(false);
+    setEditingTransaction(null);
     setIsAddingCategory(false);
     setNewCategoryName("");
   }
 
-  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (isAddingCategory) {
       toast.warning("Categoria pendente", "Salve ou cancele a nova categoria antes de continuar.");
@@ -92,10 +106,19 @@ export default function TransactionsClient({
 
     startTransition(async () => {
       try {
-        await createTransaction(formData);
-        toast.success("Transação criada", "A transação foi registrada com sucesso.");
+        if (editingTransaction) {
+          const result = await updateTransaction(editingTransaction.id, formData);
+          if (result?.error) {
+            toast.error("Erro ao salvar", result.error);
+          } else {
+            toast.success("Transação atualizada", "As alterações foram salvas.");
+          }
+        } else {
+          await createTransaction(formData);
+          toast.success("Transação criada", "A transação foi registrada com sucesso.");
+        }
       } catch {
-        toast.error("Erro ao criar", "Não foi possível criar a transação.");
+        toast.error("Erro ao salvar", "Não foi possível salvar a transação.");
       } finally {
         setIsLoading(false);
         closeModal();
@@ -185,18 +208,30 @@ export default function TransactionsClient({
     {
       key: "actions",
       label: "",
-      className: "w-10 text-right",
+      className: "w-16 text-right",
       render: (t: any) => (
-        <button
-          onClick={() => handleDeleteClick(t.id)}
-          className="text-text-dim hover:text-coral transition-colors"
-          title="Excluir"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-        </button>
+        <div className="flex items-center justify-end gap-3">
+          <button
+            onClick={() => openEditModal(t)}
+            className="text-text-dim hover:text-blue transition-colors"
+            title="Editar"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => handleDeleteClick(t.id)}
+            className="text-text-dim hover:text-coral transition-colors"
+            title="Excluir"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
       ),
     },
   ];
@@ -234,6 +269,16 @@ export default function TransactionsClient({
             {formatCurrency(Number(t.amount))}
           </span>
           <button
+            onClick={() => openEditModal(t)}
+            className="text-text-dim hover:text-blue transition-colors"
+            title="Editar"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+            </svg>
+          </button>
+          <button
             onClick={() => handleDeleteClick(t.id)}
             className="text-text-dim hover:text-coral transition-colors"
             title="Excluir"
@@ -260,7 +305,7 @@ export default function TransactionsClient({
           <h1 className="font-display text-4xl text-white tracking-tight">Transações</h1>
           <p className="text-sm text-text-dim mt-1">Gerencie suas receitas e despesas</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>Nova Transação</Button>
+        <Button onClick={openCreateModal}>Nova Transação</Button>
       </motion.div>
 
       {/* Toolbar */}
@@ -306,11 +351,11 @@ export default function TransactionsClient({
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
-        title={selectedType === "receita" ? "Nova Receita" : "Nova Despesa"}
-        eyebrow="Transação"
+        title={`${editingTransaction ? "Editar" : "Nova"} ${selectedType === "receita" ? "Receita" : "Despesa"}`}
+        eyebrow={editingTransaction ? "Editar transação" : "Transação"}
         accent={selectedType === "receita" ? "emerald" : "coral"}
       >
-        <form onSubmit={handleCreate} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="text-xs font-medium text-text-dim uppercase tracking-wider mb-2 block">
               Tipo
@@ -342,11 +387,31 @@ export default function TransactionsClient({
             <input type="hidden" name="type" value={selectedType} />
           </div>
 
-          <Input name="description" label="Descrição" required placeholder="Ex: Supermercado" />
+          <Input
+            name="description"
+            label="Descrição"
+            required
+            placeholder="Ex: Supermercado"
+            defaultValue={editingTransaction?.description}
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input name="amount" label="Valor Total" type="number" step="0.01" required placeholder="0.00" />
-            <Input name="date" label="Data" type="date" required defaultValue={new Date().toISOString().split('T')[0]} />
+            <Input
+              name="amount"
+              label="Valor Total"
+              type="number"
+              step="0.01"
+              required
+              placeholder="0.00"
+              defaultValue={editingTransaction?.amount}
+            />
+            <Input
+              name="date"
+              label="Data"
+              type="date"
+              required
+              defaultValue={editingTransaction ? formatDateInput(editingTransaction.date) : new Date().toISOString().split('T')[0]}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -354,6 +419,7 @@ export default function TransactionsClient({
               name="accountId"
               label="Conta"
               required
+              defaultValue={editingTransaction?.accountId}
               options={accounts.map((a) => ({ value: a.id, label: a.name }))}
             />
 
@@ -417,6 +483,7 @@ export default function TransactionsClient({
                 <Select
                   name="categoryId"
                   required
+                  defaultValue={editingTransaction?.categoryId}
                   options={categories
                     .filter((c) => c.type === selectedType)
                     .map((c) => ({
@@ -428,7 +495,7 @@ export default function TransactionsClient({
             </div>
           </div>
 
-          {selectedType === "despesa" && (
+          {selectedType === "despesa" && !editingTransaction && (
             <Input name="installments" label="Parcelas" type="number" min="1" max="120" defaultValue="1" />
           )}
 
@@ -437,7 +504,7 @@ export default function TransactionsClient({
               Cancelar
             </Button>
             <Button type="submit" loading={isLoading}>
-              Salvar Transação
+              {editingTransaction ? "Salvar Alterações" : "Salvar Transação"}
             </Button>
           </div>
         </form>
