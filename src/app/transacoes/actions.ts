@@ -139,3 +139,24 @@ export async function getCategories(type?: string) {
     orderBy: { name: "asc" },
   });
 }
+
+export async function createCategory(formData: FormData) {
+  const name = (formData.get("name") as string)?.trim();
+  const type = formData.get("type") as string;
+  const color = (formData.get("color") as string) || "#00E5FF";
+
+  if (!name) {
+    return { error: "Informe um nome para a categoria" };
+  }
+  if (type !== "receita" && type !== "despesa") {
+    return { error: "Tipo de categoria inválido" };
+  }
+
+  const category = await prisma.category.create({
+    data: { name, type, color },
+  });
+
+  revalidatePath("/transacoes");
+  revalidatePath("/");
+  return { success: true, category };
+}

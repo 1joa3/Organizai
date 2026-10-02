@@ -11,7 +11,7 @@ import PeriodSelector from "@/components/ui/PeriodSelector";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { useToast } from "@/components/ui/Toast";
-import { createTransaction, deleteTransaction } from "./actions";
+import { createTransaction, deleteTransaction, createCategory } from "./actions";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
 
@@ -40,11 +40,56 @@ export default function TransactionsClient({
   // Filtros
   const [filterType, setFilterType] = useState<string>("");
 
+  // Nova categoria (inline, dentro do modal de transação)
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [isCategoryLoading, setIsCategoryLoading] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("#00E5FF");
+
+  function handleCreateCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+
+    setIsCategoryLoading(true);
+    const formData = new FormData();
+    formData.set("name", name);
+    formData.set("type", selectedType);
+    formData.set("color", newCategoryColor);
+
+    startTransition(async () => {
+      try {
+        const result = await createCategory(formData);
+        if (result?.error) {
+          toast.error("Erro ao criar categoria", result.error);
+        } else {
+          toast.success("Categoria criada", `"${name}" já está disponível na lista.`);
+          setIsAddingCategory(false);
+          setNewCategoryName("");
+          setNewCategoryColor("#00E5FF");
+        }
+      } catch {
+        toast.error("Erro ao criar categoria", "Tente novamente.");
+      } finally {
+        setIsCategoryLoading(false);
+      }
+    });
+  }
+
+  function closeModal() {
+    setIsModalOpen(false);
+    setIsAddingCategory(false);
+    setNewCategoryName("");
+  }
+
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (isAddingCategory) {
+      toast.warning("Categoria pendente", "Salve ou cancele a nova categoria antes de continuar.");
+      return;
+    }
     setIsLoading(true);
     const formData = new FormData(e.currentTarget);
-    
+
     startTransition(async () => {
       try {
         await createTransaction(formData);
@@ -53,7 +98,7 @@ export default function TransactionsClient({
         toast.error("Erro ao criar", "Não foi possível criar a transação.");
       } finally {
         setIsLoading(false);
-        setIsModalOpen(false);
+        closeModal();
       }
     });
   }
@@ -260,7 +305,7 @@ export default function TransactionsClient({
       {/* Modal Nova Transação */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeModal}
         title={selectedType === "receita" ? "Nova Receita" : "Nova Despesa"}
         eyebrow="Transação"
         accent={selectedType === "receita" ? "emerald" : "coral"}
@@ -311,17 +356,76 @@ export default function TransactionsClient({
               required
               options={accounts.map((a) => ({ value: a.id, label: a.name }))}
             />
-            <Select
-              name="categoryId"
-              label="Categoria"
-              required
-              options={categories
-                .filter((c) => c.type === selectedType)
-                .map((c) => ({
-                  value: c.id,
-                  label: c.name,
-                }))}
-            />
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-text-dim uppercase tracking-wider">
+                  Categoria
+                </label>
+                {!isAddingCategory && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingCategory(true)}
+                    className="text-xs text-blue hover:text-white transition-colors cursor-pointer"
+                  >
+                    + Nova
+                  </button>
+                )}
+              </div>
+
+              {isAddingCategory ? (
+                <div className="p-3 bg-white/5 border border-white/10 rounded-lg space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      autoFocus
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="Nome da categoria"
+                      className="flex-1 min-w-0 px-3 py-2 text-sm bg-white/5 text-white border border-white/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
+                    />
+                    <input
+                      type="color"
+                      value={newCategoryColor}
+                      onChange={(e) => setNewCategoryColor(e.target.value)}
+                      className="w-10 h-10 p-1 bg-black/40 border border-white/10 rounded cursor-pointer shrink-0"
+                      aria-label="Cor da categoria"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        setIsAddingCategory(false);
+                        setNewCategoryName("");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="button"
+                      loading={isCategoryLoading}
+                      onClick={handleCreateCategory}
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  name="categoryId"
+                  required
+                  options={categories
+                    .filter((c) => c.type === selectedType)
+                    .map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                    }))}
+                />
+              )}
+            </div>
           </div>
 
           {selectedType === "despesa" && (
@@ -329,7 +433,7 @@ export default function TransactionsClient({
           )}
 
           <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
-            <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>
+            <Button variant="ghost" type="button" onClick={closeModal}>
               Cancelar
             </Button>
             <Button type="submit" loading={isLoading}>
