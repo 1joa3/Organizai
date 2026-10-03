@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCSV, coerceDate, coerceAmount, guessColumn } from "./csvImport";
+import { parseCSV, coerceDate, coerceAmount, guessColumn, expandInstallmentRow } from "./csvImport";
 
 describe("parseCSV", () => {
   it("separa por vírgula quando é o delimitador predominante", () => {
@@ -87,5 +87,60 @@ describe("guessColumn", () => {
 
   it("retorna -1 quando nenhuma coluna combina", () => {
     expect(guessColumn(["A", "B"], ["xyz"])).toBe(-1);
+  });
+});
+
+describe("expandInstallmentRow", () => {
+  it('detecta "Nome - Parcela X/Y" e expande da parcela atual até a última', () => {
+    const result = expandInstallmentRow({
+      date: new Date(2024, 2, 15), // 15/03/2024
+      description: "Loja XYZ - Parcela 2/6",
+      amount: 100,
+      type: "despesa",
+    });
+
+    expect(result).toHaveLength(5); // 2,3,4,5,6
+    expect(result.map((r) => r.description)).toEqual([
+      "Loja XYZ (2/6)",
+      "Loja XYZ (3/6)",
+      "Loja XYZ (4/6)",
+      "Loja XYZ (5/6)",
+      "Loja XYZ (6/6)",
+    ]);
+    expect(result[0].date).toEqual(new Date(2024, 2, 15));
+    expect(result[1].date).toEqual(new Date(2024, 3, 15));
+    expect(result[4].date).toEqual(new Date(2024, 6, 15));
+    expect(result.every((r) => r.amount === 100 && r.type === "despesa")).toBe(true);
+  });
+
+  it('detecta o formato "Nome (X/Y)" sem a palavra parcela', () => {
+    const result = expandInstallmentRow({
+      date: new Date(2024, 0, 1),
+      description: "Notebook (1/3)",
+      amount: 500,
+      type: "despesa",
+    });
+    expect(result.map((r) => r.description)).toEqual(["Notebook (1/3)", "Notebook (2/3)", "Notebook (3/3)"]);
+  });
+
+  it("é case-insensitive para a palavra Parcela e tolera espaços ao redor da barra", () => {
+    const result = expandInstallmentRow({
+      date: new Date(2024, 0, 1),
+      description: "Mercado - PARCELA 1 / 2",
+      amount: 50,
+      type: "despesa",
+    });
+    expect(result).toHaveLength(2);
+    expect(result[0].description).toBe("Mercado (1/2)");
+  });
+
+  it("retorna a linha original sem alterações quando não é parcelada", () => {
+    const row = { date: new Date(2024, 0, 1), description: "Supermercado", amount: 80, type: "despesa" as const };
+    expect(expandInstallmentRow(row)).toEqual([row]);
+  });
+
+  it("não expande quando a parcela atual é maior que o total (dado inconsistente)", () => {
+    const row = { date: new Date(2024, 0, 1), description: "Erro - Parcela 5/3", amount: 10, type: "despesa" as const };
+    expect(expandInstallmentRow(row)).toEqual([row]);
   });
 });

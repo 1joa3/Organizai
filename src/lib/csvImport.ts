@@ -102,6 +102,47 @@ export function coerceAmount(raw: string): number | null {
   return isParenNegative ? -Math.abs(n) : n;
 }
 
+interface ImportRow {
+  date: Date;
+  description: string;
+  amount: number;
+  type: "despesa" | "receita";
+}
+
+/**
+ * Detecta se a linha da fatura é uma parcela (ex: "Loja - Parcela 2/6",
+ * ou já no formato interno "Loja (2/6)") — bancos só listam a parcela do
+ * mês corrente, então expandimos para as parcelas futuras (current..total),
+ * uma por mês, mesmo valor. Parcelas passadas (1..current-1) não são
+ * recriadas, pois já são histórico e não afetam o saldo devedor futuro.
+ * Se não for parcelada, retorna a própria linha sem alterações.
+ */
+export function expandInstallmentRow(row: ImportRow): ImportRow[] {
+  const match =
+    row.description.match(/^(.*?)\s*-?\s*parcela\s+(\d+)\s*\/\s*(\d+)\s*$/i) ??
+    row.description.match(/^(.*?)\s*\((\d+)\s*\/\s*(\d+)\)\s*$/);
+
+  if (!match) return [row];
+
+  const baseName = match[1].trim();
+  const current = parseInt(match[2]);
+  const total = parseInt(match[3]);
+  if (!baseName || current < 1 || total < current) return [row];
+
+  const expanded: ImportRow[] = [];
+  for (let n = current; n <= total; n++) {
+    const date = new Date(row.date);
+    date.setMonth(date.getMonth() + (n - current));
+    expanded.push({
+      date,
+      description: `${baseName} (${n}/${total})`,
+      amount: row.amount,
+      type: row.type,
+    });
+  }
+  return expanded;
+}
+
 export function guessColumn(headers: string[], keywords: string[]): number {
   const normalize = (s: string) =>
     s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();

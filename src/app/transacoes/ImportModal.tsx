@@ -6,7 +6,7 @@ import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { importTransactions } from "./actions";
-import { parseCSV, coerceDate, coerceAmount, guessColumn } from "@/lib/csvImport";
+import { parseCSV, coerceDate, coerceAmount, guessColumn, expandInstallmentRow } from "@/lib/csvImport";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 const MAX_ROWS = 5000;
@@ -34,6 +34,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [categoryId, setCategoryId] = useState("");
   const [typeMode, setTypeMode] = useState<TypeMode>("despesa");
+  const [detectInstallments, setDetectInstallments] = useState(true);
 
   function reset() {
     setFileName(null);
@@ -43,6 +44,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
     setDescCol(-1);
     setAmountCol(-1);
     setTypeMode("despesa");
+    setDetectInstallments(true);
   }
 
   function handleClose() {
@@ -77,7 +79,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
     reader.readAsText(file, "utf-8");
   }
 
-  const mappedRows = useMemo(() => {
+  const singleRows = useMemo(() => {
     if (!parsed || dateCol < 0 || descCol < 0 || amountCol < 0) return [];
     return parsed.rows.map((r) => {
       const date = coerceDate(r[dateCol] ?? "");
@@ -90,8 +92,19 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
     });
   }, [parsed, dateCol, descCol, amountCol, typeMode]);
 
+  const mappedRows = useMemo(() => {
+    if (!detectInstallments) return singleRows;
+    return singleRows.flatMap((r) => {
+      if (!r.valid || !r.date || r.amount === null) return [r];
+      const expanded = expandInstallmentRow({ date: r.date, description: r.description, amount: r.amount, type: r.type });
+      if (expanded.length === 1) return [r];
+      return expanded.map((e) => ({ ...e, valid: true }));
+    });
+  }, [singleRows, detectInstallments]);
+
   const validCount = mappedRows.filter((r) => r.valid).length;
   const invalidCount = mappedRows.length - validCount;
+  const installmentExtra = mappedRows.length - singleRows.length;
   const isMapped = dateCol >= 0 && descCol >= 0 && amountCol >= 0;
 
   const filteredCategories = categories.filter((c) =>
@@ -214,15 +227,26 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               Todas as linhas importadas entram com essa categoria — dá pra reclassificar cada uma depois.
             </p>
 
+            <label className="flex items-center gap-2 text-xs text-text-dim cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={detectInstallments}
+                onChange={(e) => setDetectInstallments(e.target.checked)}
+                className="w-3.5 h-3.5 accent-blue cursor-pointer"
+              />
+              Detectar compra parcelada (ex: "Loja - Parcela 2/6") e gerar as parcelas futuras automaticamente
+            </label>
+
             {isMapped && (
               <div>
                 <p className="text-xs font-medium text-text-dim uppercase tracking-wider mb-2">
-                  Pré-visualização ({validCount} válidas{invalidCount > 0 ? `, ${invalidCount} com erro (serão ignoradas)` : ""})
+                  Pré-visualização ({validCount} válidas{invalidCount > 0 ? `, ${invalidCount} com erro (serão ignoradas)` : ""}
+                  {installmentExtra > 0 ? `, +${installmentExtra} parcelas futuras geradas` : ""})
                 </p>
                 <div className="glass-panel overflow-hidden max-h-48 overflow-y-auto">
                   <table className="w-full text-xs">
                     <tbody>
-                      {mappedRows.slice(0, 8).map((r, i) => (
+                      {mappedRows.slice(0, 12).map((r, i) => (
                         <tr key={i} className={`border-b border-white/5 last:border-b-0 ${!r.valid ? "opacity-50" : ""}`}>
                           <td className="px-3 py-2 font-mono-value text-text-dim whitespace-nowrap">
                             {r.date ? formatDate(r.date) : "—"}
@@ -235,9 +259,9 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                       ))}
                     </tbody>
                   </table>
-                  {mappedRows.length > 8 && (
+                  {mappedRows.length > 12 && (
                     <p className="text-center text-[10px] text-text-muted py-2">
-                      + {mappedRows.length - 8} linhas
+                      + {mappedRows.length - 12} linhas
                     </p>
                   )}
                 </div>
