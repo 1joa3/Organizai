@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
@@ -35,8 +35,10 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   const [categoryId, setCategoryId] = useState("");
   const [typeMode, setTypeMode] = useState<TypeMode>("despesa");
   const [detectInstallments, setDetectInstallments] = useState(true);
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<number, string>>({});
 
   function reset() {
+    setCategoryOverrides({});
     setFileName(null);
     setParsed(null);
     setTruncated(false);
@@ -107,22 +109,40 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   const installmentExtra = mappedRows.length - singleRows.length;
   const isMapped = dateCol >= 0 && descCol >= 0 && amountCol >= 0;
 
+  // Linhas podem mudar de forma (expansão de parcelas, remapeamento de
+  // colunas) — os índices de override deixam de fazer sentido, então limpa.
+  useEffect(() => {
+    setCategoryOverrides({});
+  }, [singleRows, detectInstallments]);
+
   const filteredCategories = categories.filter((c) =>
     typeMode === "signal" ? true : c.type === typeMode
   );
 
+  function getRowCategoryId(index: number) {
+    return categoryOverrides[index] ?? categoryId;
+  }
+
   function handleImport() {
     if (!accountId || !categoryId) {
-      toast.error("Faltam dados", "Selecione a conta e a categoria antes de importar.");
+      toast.error("Faltam dados", "Selecione a conta e a categoria padrão antes de importar.");
       return;
     }
+    const missingCategory = mappedRows.some((r, i) => r.valid && !getRowCategoryId(i));
+    if (missingCategory) {
+      toast.error("Faltam dados", "Alguma linha ficou sem categoria.");
+      return;
+    }
+
     const rowsToSend = mappedRows
+      .map((r, i) => ({ ...r, categoryId: getRowCategoryId(i) }))
       .filter((r) => r.valid)
       .map((r) => ({
         date: r.date!.toISOString(),
         description: r.description,
         amount: r.amount!,
         type: r.type,
+        categoryId: r.categoryId,
       }));
 
     if (rowsToSend.length === 0) {
@@ -133,7 +153,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
     setIsImporting(true);
     startTransition(async () => {
       try {
-        const result = await importTransactions({ accountId, categoryId, rows: rowsToSend });
+        const result = await importTransactions({ accountId, rows: rowsToSend });
         if (result?.error) {
           toast.error("Erro ao importar", result.error);
         } else {
@@ -224,7 +244,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               />
             </div>
             <p className="text-[11px] text-text-muted -mt-2">
-              Todas as linhas importadas entram com essa categoria — dá pra reclassificar cada uma depois.
+              Aplica essa categoria a todas as linhas — dá pra ajustar linha a linha na pré-visualização abaixo.
             </p>
 
             <label className="flex items-center gap-2 text-xs text-text-dim cursor-pointer select-none">
@@ -243,15 +263,34 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                   Pré-visualização ({validCount} válidas{invalidCount > 0 ? `, ${invalidCount} com erro (serão ignoradas)` : ""}
                   {installmentExtra > 0 ? `, +${installmentExtra} parcelas futuras geradas` : ""})
                 </p>
-                <div className="glass-panel overflow-hidden max-h-48 overflow-y-auto">
+                <div className="glass-panel overflow-hidden max-h-80 overflow-y-auto">
                   <table className="w-full text-xs">
                     <tbody>
-                      {mappedRows.slice(0, 12).map((r, i) => (
+                      {mappedRows.map((r, i) => (
                         <tr key={i} className={`border-b border-white/5 last:border-b-0 ${!r.valid ? "opacity-50" : ""}`}>
                           <td className="px-3 py-2 font-mono-value text-text-dim whitespace-nowrap">
                             {r.date ? formatDate(r.date) : "—"}
                           </td>
-                          <td className="px-3 py-2 text-white truncate max-w-[180px]">{r.description || "—"}</td>
+                          <td className="px-3 py-2 text-white truncate max-w-[160px]">{r.description || "—"}</td>
+                          <td className="px-2 py-2">
+                            {r.valid ? (
+                              <select
+                                value={getRowCategoryId(i)}
+                                onChange={(e) =>
+                                  setCategoryOverrides((prev) => ({ ...prev, [i]: e.target.value }))
+                                }
+                                className="w-full max-w-[130px] bg-white/5 border border-white/10 rounded px-1.5 py-1 text-[11px] text-white focus:border-blue focus:outline-none cursor-pointer"
+                              >
+                                {filteredCategories.map((c) => (
+                                  <option key={c.id} value={c.id} className="bg-[#13161D]">
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-text-muted">—</span>
+                            )}
+                          </td>
                           <td className={`px-3 py-2 font-mono-value text-right whitespace-nowrap ${r.type === "receita" ? "text-emerald" : "text-coral"}`}>
                             {r.amount !== null ? formatCurrency(r.amount) : "inválido"}
                           </td>
@@ -259,11 +298,6 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                       ))}
                     </tbody>
                   </table>
-                  {mappedRows.length > 12 && (
-                    <p className="text-center text-[10px] text-text-muted py-2">
-                      + {mappedRows.length - 12} linhas
-                    </p>
-                  )}
                 </div>
               </div>
             )}

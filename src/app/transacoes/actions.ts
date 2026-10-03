@@ -207,22 +207,23 @@ interface ImportRow {
   description: string;
   amount: number;
   type: string;
+  categoryId: string;
 }
 
 /**
  * Importa transações em lote (ex: fatura/extrato exportado em CSV).
- * Ignora linhas que já existem (mesma conta + data + descrição + valor)
- * para permitir reimportar um arquivo sem duplicar.
+ * Cada linha já vem com sua própria categoria (editável por linha na
+ * pré-visualização). Ignora linhas que já existem (mesma conta + data +
+ * descrição + valor) para permitir reimportar um arquivo sem duplicar.
  */
 export async function importTransactions(input: {
   accountId: string;
-  categoryId: string;
   rows: ImportRow[];
 }) {
-  const { accountId, categoryId, rows } = input;
+  const { accountId, rows } = input;
 
-  if (!accountId || !categoryId) {
-    return { error: "Selecione a conta e a categoria" };
+  if (!accountId) {
+    return { error: "Selecione a conta" };
   }
   if (!rows || rows.length === 0) {
     return { error: "Nenhuma linha válida para importar" };
@@ -230,7 +231,7 @@ export async function importTransactions(input: {
 
   const parsedRows = rows
     .map((r) => ({ ...r, date: new Date(r.date) }))
-    .filter((r) => !isNaN(r.date.getTime()) && r.description && r.amount > 0);
+    .filter((r) => !isNaN(r.date.getTime()) && r.description && r.amount > 0 && r.categoryId);
 
   if (parsedRows.length === 0) {
     return { error: "Nenhuma linha válida para importar" };
@@ -271,7 +272,7 @@ export async function importTransactions(input: {
       type: row.type === "receita" ? "receita" : "despesa",
       date: row.date,
       accountId,
-      categoryId,
+      categoryId: row.categoryId,
     });
   }
 
