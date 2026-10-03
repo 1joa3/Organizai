@@ -11,7 +11,7 @@ import PeriodSelector from "@/components/ui/PeriodSelector";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { useToast } from "@/components/ui/Toast";
-import { createTransaction, updateTransaction, deleteTransaction, deleteTransactionGroup, createCategory } from "./actions";
+import { createTransaction, updateTransaction, deleteTransaction, deleteTransactionGroup, createCategory, deleteTransactions, updateTransactionsCategory } from "./actions";
 import { formatCurrency, formatDate, formatDateInput } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
 import { parseInstallmentDescription } from "@/lib/installments";
@@ -43,6 +43,12 @@ export default function TransactionsClient({
 
   // Filtros
   const [filterType, setFilterType] = useState<string>("");
+
+  // Seleção múltipla
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  const [bulkCategoryId, setBulkCategoryId] = useState("");
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
 
   // Nova categoria (inline, dentro do modal de transação)
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -175,7 +181,95 @@ export default function TransactionsClient({
     return true;
   });
 
+  const selectedTransactions = filtered.filter((t) => selectedIds.has(t.id));
+  const selectedTypes = new Set(selectedTransactions.map((t) => t.type));
+  const canBulkRecategorize = selectedTypes.size === 1;
+  const bulkCategoryOptions = categories.filter((c) =>
+    canBulkRecategorize ? c.type === [...selectedTypes][0] : false
+  );
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === filtered.length ? new Set() : new Set(filtered.map((t) => t.id))
+    );
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setBulkCategoryId("");
+  }
+
+  function handleBulkDeleteConfirm() {
+    setIsBulkDeleteOpen(false);
+    const ids = Array.from(selectedIds);
+    startTransition(async () => {
+      try {
+        const result = await deleteTransactions(ids);
+        if (result?.error) {
+          toast.error("Erro ao excluir", result.error);
+        } else {
+          toast.success("Transações excluídas", `${result.count} transações foram removidas.`);
+          clearSelection();
+        }
+      } catch {
+        toast.error("Erro inesperado", "Ocorreu um erro ao excluir as transações.");
+      }
+    });
+  }
+
+  function handleBulkRecategorize() {
+    if (!bulkCategoryId) return;
+    const ids = Array.from(selectedIds);
+    setIsBulkActionLoading(true);
+    startTransition(async () => {
+      try {
+        const result = await updateTransactionsCategory(ids, bulkCategoryId);
+        if (result?.error) {
+          toast.error("Erro ao atualizar", result.error);
+        } else {
+          toast.success("Categoria atualizada", `${result.count} transações foram reclassificadas.`);
+          clearSelection();
+        }
+      } catch {
+        toast.error("Erro inesperado", "Ocorreu um erro ao atualizar a categoria.");
+      } finally {
+        setIsBulkActionLoading(false);
+      }
+    });
+  }
+
   const columns = [
+    {
+      key: "select",
+      label: (
+        <input
+          type="checkbox"
+          checked={filtered.length > 0 && selectedIds.size === filtered.length}
+          onChange={toggleSelectAll}
+          className="w-4 h-4 accent-blue cursor-pointer"
+          aria-label="Selecionar todas"
+        />
+      ),
+      className: "w-10",
+      render: (t: any) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(t.id)}
+          onChange={() => toggleSelect(t.id)}
+          className="w-4 h-4 accent-blue cursor-pointer"
+          aria-label="Selecionar transação"
+        />
+      ),
+    },
     {
       key: "date",
       label: "Data",
@@ -255,6 +349,13 @@ export default function TransactionsClient({
   function renderMobileItem(t: any) {
     return (
       <div className="glass-panel p-4 flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={selectedIds.has(t.id)}
+          onChange={() => toggleSelect(t.id)}
+          className="w-4 h-4 accent-blue cursor-pointer shrink-0"
+          aria-label="Selecionar transação"
+        />
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner shrink-0"
           style={{
@@ -341,7 +442,10 @@ export default function TransactionsClient({
                 { value: "despesa", label: "Despesas" },
               ]}
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
+              onChange={(e) => {
+                setFilterType(e.target.value);
+                clearSelection();
+              }}
             />
           </div>
         </div>
@@ -362,6 +466,56 @@ export default function TransactionsClient({
           </Button>
         </div>
       </motion.div>
+
+      {/* Barra de ações em massa */}
+      {selectedIds.size > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-wrap items-center gap-3 p-3 glass-panel border border-blue/20"
+        >
+          <span className="text-sm text-white font-medium px-1">
+            {selectedIds.size} selecionada{selectedIds.size > 1 ? "s" : ""}
+          </span>
+
+          <div className="flex-1 flex flex-wrap items-center gap-2">
+            {canBulkRecategorize ? (
+              <>
+                <select
+                  value={bulkCategoryId}
+                  onChange={(e) => setBulkCategoryId(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-blue focus:outline-none cursor-pointer"
+                >
+                  <option value="" className="bg-[#13161D]">Mudar categoria para...</option>
+                  {bulkCategoryOptions.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-[#13161D]">{c.name}</option>
+                  ))}
+                </select>
+                <Button
+                  variant="glass"
+                  size="sm"
+                  disabled={!bulkCategoryId}
+                  loading={isBulkActionLoading}
+                  onClick={handleBulkRecategorize}
+                >
+                  Aplicar
+                </Button>
+              </>
+            ) : (
+              <span className="text-xs text-text-muted">
+                Selecione itens do mesmo tipo (despesa ou receita) para mudar a categoria em lote
+              </span>
+            )}
+          </div>
+
+          <Button variant="danger" size="sm" onClick={() => setIsBulkDeleteOpen(true)}>
+            Excluir selecionadas
+          </Button>
+          <Button variant="ghost" size="sm" onClick={clearSelection}>
+            Cancelar
+          </Button>
+        </motion.div>
+      )}
 
       {/* Tabela */}
       <motion.div
@@ -557,6 +711,18 @@ export default function TransactionsClient({
           />
         );
       })()}
+
+      {/* Confirm Dialog para exclusão em massa */}
+      <ConfirmDialog
+        isOpen={isBulkDeleteOpen}
+        onConfirm={handleBulkDeleteConfirm}
+        onCancel={() => setIsBulkDeleteOpen(false)}
+        title="Excluir transações selecionadas"
+        message={`Esta ação é irreversível. Deseja realmente excluir ${selectedIds.size} transação(ões)?`}
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+      />
 
       {/* Modal de importação */}
       <ImportModal

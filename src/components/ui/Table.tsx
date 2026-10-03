@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 interface Column<T> {
   key: string;
-  label: string;
+  label: ReactNode;
   sortable?: boolean;
   render?: (item: T) => ReactNode;
   className?: string;

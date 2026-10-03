@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import Select from "./Select";
+import { PERIOD_COOKIE, formatPeriodCookie } from "@/lib/periodCookie";
 
 const MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -18,6 +19,7 @@ export default function PeriodSelector({ month, year }: PeriodSelectorProps) {
   const pathname = usePathname();
 
   function navigate(nextMonth: number, nextYear: number) {
+    document.cookie = `${PERIOD_COOKIE}=${formatPeriodCookie(nextMonth, nextYear)}; path=/; max-age=31536000`;
     router.push(`${pathname}?month=${nextMonth}&year=${nextYear}`);
   }
 

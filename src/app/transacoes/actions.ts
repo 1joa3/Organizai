@@ -284,3 +284,43 @@ export async function importTransactions(input: {
   revalidatePath("/");
   return { success: true, imported: toCreate.length, skipped };
 }
+
+/** Exclui várias transações selecionadas de uma vez (seleção múltipla na tabela). */
+export async function deleteTransactions(ids: string[]) {
+  if (!ids || ids.length === 0) {
+    return { error: "Nenhuma transação selecionada" };
+  }
+
+  try {
+    const result = await prisma.transaction.deleteMany({ where: { id: { in: ids } } });
+    revalidatePath("/transacoes");
+    revalidatePath("/");
+    return { success: true, count: result.count };
+  } catch (error) {
+    console.error("Error deleting transactions:", error);
+    return { error: "Erro interno ao tentar excluir." };
+  }
+}
+
+/** Muda a categoria de várias transações selecionadas de uma vez. */
+export async function updateTransactionsCategory(ids: string[], categoryId: string) {
+  if (!ids || ids.length === 0) {
+    return { error: "Nenhuma transação selecionada" };
+  }
+  if (!categoryId) {
+    return { error: "Selecione uma categoria" };
+  }
+
+  try {
+    const result = await prisma.transaction.updateMany({
+      where: { id: { in: ids } },
+      data: { categoryId },
+    });
+    revalidatePath("/transacoes");
+    revalidatePath("/");
+    return { success: true, count: result.count };
+  } catch (error) {
+    console.error("Error updating transactions category:", error);
+    return { error: "Erro interno ao tentar atualizar a categoria." };
+  }
+}
