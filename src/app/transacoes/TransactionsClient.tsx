@@ -11,9 +11,10 @@ import PeriodSelector from "@/components/ui/PeriodSelector";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { useToast } from "@/components/ui/Toast";
-import { createTransaction, updateTransaction, deleteTransaction, createCategory } from "./actions";
+import { createTransaction, updateTransaction, deleteTransaction, deleteTransactionGroup, createCategory } from "./actions";
 import { formatCurrency, formatDate, formatDateInput } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
+import { parseInstallmentDescription } from "@/lib/installments";
 import ImportModal from "./ImportModal";
 
 type BaseProps = {
@@ -37,7 +38,7 @@ export default function TransactionsClient({
   const [selectedType, setSelectedType] = useState("despesa");
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const toast = useToast();
 
   // Filtros
@@ -128,28 +129,41 @@ export default function TransactionsClient({
     });
   }
 
-  function handleDeleteClick(id: string) {
-    setDeleteTarget(id);
+  function handleDeleteClick(t: any) {
+    setDeleteTarget(t);
   }
 
-  function handleDeleteConfirm() {
-    if (!deleteTarget) return;
-    const id = deleteTarget;
+  function runDelete(action: () => Promise<{ error?: string; count?: number }>, successMessage: (count: number) => string) {
     setDeleteTarget(null);
-
     startTransition(async () => {
       try {
-        const result = await deleteTransaction(id);
+        const result = await action();
         if (result?.error) {
           toast.error("Erro ao excluir", result.error);
         } else {
-          toast.success("Transação excluída", "O registro foi removido com sucesso.");
+          toast.success("Transação excluída", successMessage(result?.count ?? 1));
         }
       } catch (error) {
         console.error("Failed to delete transaction:", error);
         toast.error("Erro inesperado", "Ocorreu um erro ao excluir a transação.");
       }
     });
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    runDelete(
+      () => deleteTransaction(deleteTarget.id),
+      () => "O registro foi removido com sucesso."
+    );
+  }
+
+  function handleDeleteGroupConfirm() {
+    if (!deleteTarget) return;
+    runDelete(
+      () => deleteTransactionGroup(deleteTarget.id),
+      (count) => `${count} parcelas foram removidas.`
+    );
   }
 
   function handleDeleteCancel() {
@@ -224,7 +238,7 @@ export default function TransactionsClient({
             </svg>
           </button>
           <button
-            onClick={() => handleDeleteClick(t.id)}
+            onClick={() => handleDeleteClick(t)}
             className="text-text-dim hover:text-coral transition-colors"
             title="Excluir"
           >
@@ -281,7 +295,7 @@ export default function TransactionsClient({
             </svg>
           </button>
           <button
-            onClick={() => handleDeleteClick(t.id)}
+            onClick={() => handleDeleteClick(t)}
             className="text-text-dim hover:text-coral transition-colors"
             title="Excluir"
           >
@@ -522,16 +536,27 @@ export default function TransactionsClient({
       </Modal>
 
       {/* Confirm Dialog para exclusão */}
-      <ConfirmDialog
-        isOpen={deleteTarget !== null}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-        title="Excluir transação"
-        message="Esta ação é irreversível. Deseja realmente excluir esta transação?"
-        confirmLabel="Excluir"
-        cancelLabel="Cancelar"
-        variant="danger"
-      />
+      {(() => {
+        const installmentInfo = deleteTarget ? parseInstallmentDescription(deleteTarget.description) : null;
+        return (
+          <ConfirmDialog
+            isOpen={deleteTarget !== null}
+            onConfirm={handleDeleteConfirm}
+            onCancel={handleDeleteCancel}
+            onExtra={installmentInfo ? handleDeleteGroupConfirm : undefined}
+            extraLabel={installmentInfo ? `Excluir todas as ${installmentInfo.total} parcelas` : undefined}
+            title="Excluir transação"
+            message={
+              installmentInfo
+                ? `Esta é a parcela ${installmentInfo.current}/${installmentInfo.total} de "${installmentInfo.baseName}". Excluir só esta parcela, ou a compra inteira?`
+                : "Esta ação é irreversível. Deseja realmente excluir esta transação?"
+            }
+            confirmLabel={installmentInfo ? "Excluir só esta" : "Excluir"}
+            cancelLabel="Cancelar"
+            variant="danger"
+          />
+        );
+      })()}
 
       {/* Modal de importação */}
       <ImportModal

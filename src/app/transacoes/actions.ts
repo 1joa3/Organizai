@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { parseInstallmentDescription, escapeRegExp } from "@/lib/installments";
 
 export async function createTransaction(formData: FormData) {
   const description = formData.get("description") as string;
@@ -94,6 +95,46 @@ export async function deleteTransaction(id: string) {
   } catch (error) {
     console.error("Error deleting transaction:", error);
     return { error: "Erro interno ao tentar excluir." };
+  }
+}
+
+/**
+ * Exclui todas as parcelas de uma mesma compra (mesma conta + categoria +
+ * nome base + total de parcelas), não só a linha clicada. Cada parcela é
+ * uma transação independente no banco, então excluir "uma parcela" nunca
+ * removia o resto da compra — isso resolve esse problema.
+ */
+export async function deleteTransactionGroup(id: string) {
+  try {
+    const tx = await prisma.transaction.findUnique({ where: { id } });
+    if (!tx) {
+      return { error: "Transação não encontrada" };
+    }
+
+    const info = parseInstallmentDescription(tx.description);
+    if (!info) {
+      // não é uma parcela — comportamento igual ao excluir normal
+      await prisma.transaction.delete({ where: { id } });
+      revalidatePath("/transacoes");
+      revalidatePath("/");
+      return { success: true, count: 1 };
+    }
+
+    const pattern = new RegExp(`^${escapeRegExp(info.baseName)} \\(\\d+/${info.total}\\)$`);
+    const candidates = await prisma.transaction.findMany({
+      where: { accountId: tx.accountId, categoryId: tx.categoryId, type: tx.type },
+      select: { id: true, description: true },
+    });
+    const groupIds = candidates.filter((c) => pattern.test(c.description)).map((c) => c.id);
+
+    await prisma.transaction.deleteMany({ where: { id: { in: groupIds } } });
+
+    revalidatePath("/transacoes");
+    revalidatePath("/");
+    return { success: true, count: groupIds.length };
+  } catch (error) {
+    console.error("Error deleting transaction group:", error);
+    return { error: "Erro interno ao tentar excluir o grupo de parcelas." };
   }
 }
 

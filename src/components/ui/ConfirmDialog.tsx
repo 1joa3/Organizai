@@ -14,6 +14,9 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "danger" | "warning" | "info";
+  /** Terceira opção, para escolhas com mais de dois caminhos (ex: excluir só este item vs. o grupo todo). */
+  extraLabel?: string;
+  onExtra?: () => void;
 }
 
 const variantConfig = {
@@ -62,6 +65,8 @@ export default function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   variant = "danger",
+  extraLabel,
+  onExtra,
 }: ConfirmDialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const config = variantConfig[variant];
@@ -121,13 +126,20 @@ export default function ConfirmDialog({
               <p className="text-[13px] leading-relaxed text-text-dim max-w-[280px]">{message}</p>
             </div>
 
-            <div className="px-6 pb-6 flex gap-3">
-              <Button variant="ghost" className="flex-1" onClick={onCancel}>
-                {cancelLabel}
-              </Button>
-              <Button variant={config.buttonVariant} className="flex-1" onClick={onConfirm}>
-                {confirmLabel}
-              </Button>
+            <div className={`px-6 pb-6 flex gap-3 ${extraLabel ? "flex-col" : ""}`}>
+              {extraLabel && onExtra && (
+                <Button variant="glass" className="w-full" onClick={onExtra}>
+                  {extraLabel}
+                </Button>
+              )}
+              <div className="flex gap-3">
+                <Button variant="ghost" className="flex-1" onClick={onCancel}>
+                  {cancelLabel}
+                </Button>
+                <Button variant={config.buttonVariant} className="flex-1" onClick={onConfirm}>
+                  {confirmLabel}
+                </Button>
+              </div>
             </div>
           </motion.div>
         </motion.div>
