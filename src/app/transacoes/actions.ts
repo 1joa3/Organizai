@@ -2,7 +2,12 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { parseInstallmentDescription, escapeRegExp } from "@/lib/installments";
+import {
+  parseInstallmentDescription,
+  escapeRegExp,
+  splitInstallmentAmounts,
+  addMonthsClamped,
+} from "@/lib/installments";
 
 export async function createTransaction(formData: FormData) {
   const description = formData.get("description") as string;
@@ -19,18 +24,15 @@ export async function createTransaction(formData: FormData) {
   }
 
   if (type === "despesa" && installments > 1) {
-    const installmentAmount = parseFloat((amount / installments).toFixed(2));
+    const installmentAmounts = splitInstallmentAmounts(amount, installments);
     const dataToCreate = [];
-    
+
     for (let i = 0; i < installments; i++) {
-      const installmentDate = new Date(date);
-      installmentDate.setMonth(installmentDate.getMonth() + i);
-      
       dataToCreate.push({
         description: `${description} (${i + 1}/${installments})`,
-        amount: installmentAmount,
+        amount: installmentAmounts[i],
         type,
-        date: installmentDate,
+        date: addMonthsClamped(date, i),
         accountId,
         categoryId,
       });

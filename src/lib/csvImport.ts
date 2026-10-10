@@ -1,3 +1,5 @@
+import { addMonthsClamped } from "./installments";
+
 /**
  * Parser de CSV sem dependências externas (evita as vulnerabilidades
  * conhecidas de libs como `xlsx`/SheetJS para um caso de uso simples).
@@ -131,10 +133,8 @@ export function expandInstallmentRow(row: ImportRow): ImportRow[] {
 
   const expanded: ImportRow[] = [];
   for (let n = current; n <= total; n++) {
-    const date = new Date(row.date);
-    date.setMonth(date.getMonth() + (n - current));
     expanded.push({
-      date,
+      date: addMonthsClamped(row.date, n - current),
       description: `${baseName} (${n}/${total})`,
       amount: row.amount,
       type: row.type,

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE, safeEqual, verifySessionValue } from "@/lib/session";
 
 /**
  * Proxy de autenticação simples (single-user)
- * Compara o header Authorization com o AUTH_TOKEN do .env
+ * Aceita o cookie de sessão assinado (criado no login) ou o header
+ * `Authorization: Bearer <AUTH_TOKEN>`.
  *
  * Uso no proxy.ts:
  *   export { authMiddleware as proxy } from "@/lib/auth"
@@ -10,13 +12,14 @@ import { NextRequest, NextResponse } from "next/server";
 export function authMiddleware(request: NextRequest) {
   const token = process.env.AUTH_TOKEN;
 
-  // Se não há token configurado, permite acesso (dev mode)
   if (!token) {
-    return NextResponse.next();
+    // Sem token só libera em desenvolvimento. Em produção, um AUTH_TOKEN
+    // esquecido no deploy deixaria o app inteiro público — melhor quebrar.
+    if (process.env.NODE_ENV !== "production") {
+      return NextResponse.next();
+    }
+    return new NextResponse("AUTH_TOKEN não configurado no servidor.", { status: 500 });
   }
-
-  const authHeader = request.headers.get("authorization");
-  const providedToken = authHeader?.replace("Bearer ", "");
 
   // Permitir acesso à página de login e assets estáticos
   if (
@@ -27,10 +30,13 @@ export function authMiddleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Verificar cookie de sessão
-  const sessionToken = request.cookies.get("session-token")?.value;
+  const sessionValue = request.cookies.get(SESSION_COOKIE)?.value;
+  if (sessionValue && verifySessionValue(sessionValue, token)) {
+    return NextResponse.next();
+  }
 
-  if (sessionToken === token || providedToken === token) {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ") && safeEqual(authHeader.slice(7), token)) {
     return NextResponse.next();
   }
 

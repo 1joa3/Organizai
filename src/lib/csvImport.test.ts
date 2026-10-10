@@ -91,6 +91,20 @@ describe("guessColumn", () => {
 });
 
 describe("expandInstallmentRow", () => {
+  it("parcela no dia 31 cai no último dia dos meses mais curtos", () => {
+    const result = expandInstallmentRow({
+      date: new Date(2026, 0, 31),
+      description: "Loja - Parcela 1/3",
+      amount: 100,
+      type: "despesa",
+    });
+    expect(result.map((r) => r.date)).toEqual([
+      new Date(2026, 0, 31),
+      new Date(2026, 1, 28),
+      new Date(2026, 2, 31),
+    ]);
+  });
+
   it('detecta "Nome - Parcela X/Y" e expande da parcela atual até a última', () => {
     const result = expandInstallmentRow({
       date: new Date(2024, 2, 15), // 15/03/2024
