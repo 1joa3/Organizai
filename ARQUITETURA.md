@@ -1,4 +1,4 @@
-# Livro-Caixa — Arquitetura e Plano Técnico
+# OrganizAI — Arquitetura e Plano Técnico
 
 App de finanças pessoais. Controle de receitas/despesas por categoria, investimentos com evolução patrimonial, metas financeiras e dashboard consolidado.
 
@@ -125,7 +125,7 @@ model Goal {
 ## Estrutura de pastas
 
 ```
-livro-caixa/
+organizai/
 ├─ prisma/
 │  ├─ schema.prisma
 │  └─ seed.ts                        # dados iniciais (categorias padrão)

@@ -21,7 +21,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Livro-Caixa — Finanças Pessoais",
+  title: "OrganizAI — Finanças Pessoais",
   description: "Controle financeiro de alta performance",
 };
 

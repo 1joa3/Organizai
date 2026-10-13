@@ -1,4 +1,4 @@
-# Livro-Caixa
+# OrganizAI
 
 App pessoal de finanças: transações, investimentos, metas e dashboard consolidado.
 Arquitetura, decisões técnicas, changelog e roadmap completos em [`ARQUITETURA.md`](./ARQUITETURA.md).
