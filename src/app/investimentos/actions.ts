@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 import { firstError, formToObject, investmentSchema } from "@/lib/validation";
 
@@ -18,24 +19,27 @@ function parseInvestment(formData: FormData) {
 }
 
 export async function createInvestment(formData: FormData) {
+  const { id: userId } = await requireUser();
   const result = parseInvestment(formData);
   if ("error" in result) return { error: result.error };
 
-  await prisma.investment.create({ data: result.data });
+  await prisma.investment.create({ data: { ...result.data, userId } });
 
   revalidate();
   return { success: true };
 }
 
 export async function updateInvestment(id: string, formData: FormData) {
+  const { id: userId } = await requireUser();
   const result = parseInvestment(formData);
   if ("error" in result) return { error: result.error };
 
   try {
-    await prisma.investment.update({ where: { id }, data: result.data });
+    const updated = await prisma.investment.updateMany({ where: { id, userId }, data: result.data });
+    if (updated.count === 0) return { error: "Investimento não encontrado." };
   } catch (error) {
     console.error("Error updating investment:", error);
-    return { error: "Investimento não encontrado ou erro ao salvar." };
+    return { error: "Erro interno ao salvar o investimento." };
   }
 
   revalidate();
@@ -43,8 +47,10 @@ export async function updateInvestment(id: string, formData: FormData) {
 }
 
 export async function deleteInvestment(id: string) {
+  const { id: userId } = await requireUser();
   try {
-    await prisma.investment.delete({ where: { id } });
+    const result = await prisma.investment.deleteMany({ where: { id, userId } });
+    if (result.count === 0) return { error: "Investimento não encontrado." };
   } catch (error) {
     console.error("Error deleting investment:", error);
     return { error: "Investimento não encontrado." };
@@ -54,7 +60,9 @@ export async function deleteInvestment(id: string) {
 }
 
 export async function getInvestments() {
+  const { id: userId } = await requireUser();
   return prisma.investment.findMany({
+    where: { userId },
     orderBy: { date: "desc" },
   });
 }

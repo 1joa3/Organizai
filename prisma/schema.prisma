@@ -10,26 +10,33 @@ datasource db {
 
 model Account {
   id           String        @id @default(cuid())
-  name         String                            // "Nubank", "Carteira", "Bradesco"
-  type         String                            // corrente | poupança | carteira
+  userId       String? // dono (id do usuário no Supabase Auth); null = dado antigo ainda não reivindicado
+  name         String // "Nubank", "Carteira", "Bradesco"
+  type         String // corrente | poupança | carteira
   transactions Transaction[]
   createdAt    DateTime      @default(now())
+
+  @@index([userId])
 }
 
 model Category {
   id           String        @id @default(cuid())
-  name         String                            // "Moradia", "Alimentação"
-  type         String                            // receita | despesa
-  color        String                            // hex: "#F87171"
-  icon         String?                           // emoji ou ícone opcional
+  userId       String? // dono (id do usuário no Supabase Auth); null = dado antigo ainda não reivindicado
+  name         String // "Moradia", "Alimentação"
+  type         String // receita | despesa
+  color        String // hex: "#F87171"
+  icon         String? // emoji ou ícone opcional
   transactions Transaction[]
+
+  @@index([userId])
 }
 
 model Transaction {
   id          String   @id @default(cuid())
+  userId      String? // dono (id do usuário no Supabase Auth); null = dado antigo ainda não reivindicado
   description String
   amount      Decimal  @db.Decimal(12, 2)
-  type        String                              // receita | despesa
+  type        String // receita | despesa
   date        DateTime
   accountId   String
   account     Account  @relation(fields: [accountId], references: [id])
@@ -43,6 +50,7 @@ model Transaction {
   installmentNumber  Int?
   installmentTotal   Int?
 
+  @@index([userId])
   @@index([date])
   @@index([type])
   @@index([installmentGroupId])
@@ -50,23 +58,28 @@ model Transaction {
 
 model Investment {
   id             String   @id @default(cuid())
-  asset          String                           // "Tesouro Selic 2029", "IVVB11"
-  assetType      String                           // renda_fixa | renda_variavel | cripto | fundo
+  userId         String? // dono (id do usuário no Supabase Auth); null = dado antigo ainda não reivindicado
+  asset          String // "Tesouro Selic 2029", "IVVB11"
+  assetType      String // renda_fixa | renda_variavel | cripto | fundo
   investedAmount Decimal  @db.Decimal(12, 2)
   currentAmount  Decimal  @db.Decimal(12, 2)
   date           DateTime
   notes          String?
   createdAt      DateTime @default(now())
 
+  @@index([userId])
   @@index([date])
 }
 
 model Goal {
   id            String    @id @default(cuid())
-  name          String                            // "Reserva de emergência"
+  userId        String? // dono (id do usuário no Supabase Auth); null = dado antigo ainda não reivindicado
+  name          String // "Reserva de emergência"
   targetAmount  Decimal   @db.Decimal(12, 2)
   currentAmount Decimal   @db.Decimal(12, 2)
   deadline      DateTime?
   color         String    @default("#FBBF24")
   createdAt     DateTime  @default(now())
+
+  @@index([userId])
 }

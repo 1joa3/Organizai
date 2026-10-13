@@ -2,16 +2,20 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import Sidebar, { MobileBottomNav } from "./Sidebar";
+import Sidebar, { MobileBottomNav, type SidebarUser } from "./Sidebar";
 import { ToastProvider } from "./Toast";
 import { saveSidebarCookie } from "@/lib/sidebar";
+
+const AUTH_PAGES = ["/login", "/esqueci-senha", "/nova-senha"];
 
 export default function ClientLayout({
   children,
   initialSidebarExpanded = false,
+  user,
 }: {
   children: React.ReactNode;
   initialSidebarExpanded?: boolean;
+  user: SidebarUser | null;
 }) {
   const [isExpanded, setIsExpanded] = useState(initialSidebarExpanded);
   const pathname = usePathname();
@@ -21,15 +25,15 @@ export default function ClientLayout({
     setIsExpanded(!isExpanded);
   }
 
-  // A tela de login fica sem menu: não há o que navegar antes de entrar
-  if (pathname === "/login") {
+  // Telas de autenticação ficam sem menu: não há o que navegar antes de entrar
+  if (AUTH_PAGES.includes(pathname) || !user) {
     return <ToastProvider>{children}</ToastProvider>;
   }
 
   return (
     <ToastProvider>
       <div className="min-h-screen bg-bg">
-        <Sidebar isExpanded={isExpanded} onToggle={toggleSidebar} />
+        <Sidebar isExpanded={isExpanded} onToggle={toggleSidebar} user={user} />
         <MobileBottomNav />
 
         <div

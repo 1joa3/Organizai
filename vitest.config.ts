@@ -14,6 +14,9 @@ export default defineConfig({
     environment: "node",
     globals: true,
     globalSetup: "./vitest.global-setup.ts",
+    // Os testes com banco compartilham o schema `test` e limpam as tabelas:
+    // rodar arquivos em paralelo faria um apagar os dados do outro
+    fileParallelism: false,
     env: {
       // Mesma conexão pooled de produção, isolada no schema `test` —
       // ver vitest.global-setup.ts para a criação desse schema.

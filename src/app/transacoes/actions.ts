@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 import { splitInstallmentAmounts, addMonthsClamped, importInstallmentKey } from "@/lib/installments";
 import type { DateRange } from "@/lib/period";
@@ -19,11 +20,14 @@ function revalidate() {
   revalidatePath("/");
 }
 
-/** Confere se a conta e a categoria existem e se a categoria é do mesmo tipo da transação. */
-async function checkReferences(accountId: string, categoryId: string, type: string) {
+/**
+ * Confere se a conta e a categoria existem, são do usuário e se a categoria
+ * é do mesmo tipo da transação.
+ */
+async function checkReferences(userId: string, accountId: string, categoryId: string, type: string) {
   const [account, category] = await Promise.all([
-    prisma.account.findUnique({ where: { id: accountId }, select: { id: true } }),
-    prisma.category.findUnique({ where: { id: categoryId }, select: { type: true } }),
+    prisma.account.findFirst({ where: { id: accountId, userId }, select: { id: true } }),
+    prisma.category.findFirst({ where: { id: categoryId, userId }, select: { type: true } }),
   ]);
   if (!account) return "Conta não encontrada";
   if (!category) return "Categoria não encontrada";
@@ -32,11 +36,12 @@ async function checkReferences(accountId: string, categoryId: string, type: stri
 }
 
 export async function createTransaction(formData: FormData) {
+  const { id: userId } = await requireUser();
   const parsed = transactionSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { description, amount, type, date, accountId, categoryId, installments } = parsed.data;
 
-  const refError = await checkReferences(accountId, categoryId, type);
+  const refError = await checkReferences(userId, accountId, categoryId, type);
   if (refError) return { error: refError };
 
   try {
@@ -52,6 +57,7 @@ export async function createTransaction(formData: FormData) {
           date: addMonthsClamped(date, i),
           accountId,
           categoryId,
+          userId,
           installmentGroupId,
           installmentNumber: i + 1,
           installmentTotal: installments,
@@ -59,7 +65,7 @@ export async function createTransaction(formData: FormData) {
       });
     } else {
       await prisma.transaction.create({
-        data: { description, amount, type, date, accountId, categoryId },
+        data: { description, amount, type, date, accountId, categoryId, userId },
       });
     }
   } catch (error) {
@@ -72,22 +78,24 @@ export async function createTransaction(formData: FormData) {
 }
 
 export async function updateTransaction(id: string, formData: FormData) {
+  const { id: userId } = await requireUser();
   const parsed = transactionSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { description, amount, type, date, accountId, categoryId } = parsed.data;
 
-  const refError = await checkReferences(accountId, categoryId, type);
+  const refError = await checkReferences(userId, accountId, categoryId, type);
   if (refError) return { error: refError };
 
   try {
     // Os campos de parcela não mudam: editar a descrição não tira a parcela da compra
-    await prisma.transaction.update({
-      where: { id },
+    const result = await prisma.transaction.updateMany({
+      where: { id, userId },
       data: { description, amount, type, date, accountId, categoryId },
     });
+    if (result.count === 0) return { error: "Transação não encontrada." };
   } catch (error) {
     console.error("Error updating transaction:", error);
-    return { error: "Transação não encontrada ou erro ao salvar." };
+    return { error: "Erro interno ao salvar a transação." };
   }
 
   revalidate();
@@ -95,8 +103,10 @@ export async function updateTransaction(id: string, formData: FormData) {
 }
 
 export async function deleteTransaction(id: string) {
+  const { id: userId } = await requireUser();
   try {
-    await prisma.transaction.delete({ where: { id } });
+    const result = await prisma.transaction.deleteMany({ where: { id, userId } });
+    if (result.count === 0) return { error: "Transação não encontrada." };
     revalidate();
     return { success: true };
   } catch (error) {
@@ -107,21 +117,22 @@ export async function deleteTransaction(id: string) {
 
 /** Exclui todas as parcelas da mesma compra (mesmo installmentGroupId), não só a linha clicada. */
 export async function deleteTransactionGroup(id: string) {
+  const { id: userId } = await requireUser();
   try {
-    const tx = await prisma.transaction.findUnique({ where: { id } });
+    const tx = await prisma.transaction.findFirst({ where: { id, userId } });
     if (!tx) {
       return { error: "Transação não encontrada" };
     }
 
     if (!tx.installmentGroupId) {
       // não é uma parcela — comportamento igual ao excluir normal
-      await prisma.transaction.delete({ where: { id } });
+      await prisma.transaction.deleteMany({ where: { id, userId } });
       revalidate();
       return { success: true, count: 1 };
     }
 
     const result = await prisma.transaction.deleteMany({
-      where: { installmentGroupId: tx.installmentGroupId },
+      where: { installmentGroupId: tx.installmentGroupId, userId },
     });
 
     revalidate();
@@ -137,7 +148,8 @@ export async function getTransactions(filters?: {
   categoryId?: string;
   type?: string;
 }) {
-  const where: Record<string, unknown> = {};
+  const { id: userId } = await requireUser();
+  const where: Record<string, unknown> = { userId };
 
   if (filters?.range) {
     where.date = { gte: filters.range.start, lt: filters.range.end };
@@ -162,21 +174,24 @@ export async function getTransactions(filters?: {
 }
 
 export async function getAccounts() {
-  return prisma.account.findMany({ orderBy: { name: "asc" } });
+  const { id: userId } = await requireUser();
+  return prisma.account.findMany({ where: { userId }, orderBy: { name: "asc" } });
 }
 
 export async function getCategories(type?: string) {
+  const { id: userId } = await requireUser();
   return prisma.category.findMany({
-    where: type ? { type } : undefined,
+    where: type ? { userId, type } : { userId },
     orderBy: { name: "asc" },
   });
 }
 
 export async function createCategory(formData: FormData) {
+  const { id: userId } = await requireUser();
   const parsed = categorySchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
 
-  const category = await prisma.category.create({ data: parsed.data });
+  const category = await prisma.category.create({ data: { ...parsed.data, userId } });
 
   revalidate();
   return { success: true, category };
@@ -191,15 +206,16 @@ export async function createCategory(formData: FormData) {
  * reaproveitando o grupo de uma importação anterior, se já existir.
  */
 export async function importTransactions(input: unknown) {
+  const { id: userId } = await requireUser();
   const parsed = importSchema.safeParse(input);
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { accountId, rows } = parsed.data;
 
-  const account = await prisma.account.findUnique({ where: { id: accountId }, select: { id: true } });
+  const account = await prisma.account.findFirst({ where: { id: accountId, userId }, select: { id: true } });
   if (!account) return { error: "Conta não encontrada" };
 
   const categoryIds = [...new Set(rows.map((r) => r.categoryId))];
-  const foundCategories = await prisma.category.count({ where: { id: { in: categoryIds } } });
+  const foundCategories = await prisma.category.count({ where: { id: { in: categoryIds }, userId } });
   if (foundCategories !== categoryIds.length) return { error: "Alguma categoria não foi encontrada" };
 
   const timestamps = rows.map((r) => r.date.getTime());
@@ -207,7 +223,7 @@ export async function importTransactions(input: unknown) {
   const maxDate = new Date(Math.max(...timestamps));
 
   const existing = await prisma.transaction.findMany({
-    where: { accountId, date: { gte: minDate, lte: maxDate } },
+    where: { accountId, userId, date: { gte: minDate, lte: maxDate } },
     select: { date: true, description: true, amount: true },
   });
   const existingKeys = new Set(
@@ -221,6 +237,7 @@ export async function importTransactions(input: unknown) {
       const previous = await prisma.transaction.findFirst({
         where: {
           accountId,
+          userId,
           type,
           categoryId,
           installmentTotal: total,
@@ -254,6 +271,7 @@ export async function importTransactions(input: unknown) {
       date: row.date,
       accountId,
       categoryId: row.categoryId,
+      userId,
       ...(installment && {
         installmentGroupId: await groupIdFor(installment.key, installment.baseName, installment.total, row.type, row.categoryId),
         installmentNumber: installment.current,
@@ -272,11 +290,12 @@ export async function importTransactions(input: unknown) {
 
 /** Exclui várias transações selecionadas de uma vez (seleção múltipla na tabela). */
 export async function deleteTransactions(ids: unknown) {
+  const { id: userId } = await requireUser();
   const parsed = idListSchema.safeParse(ids);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   try {
-    const result = await prisma.transaction.deleteMany({ where: { id: { in: parsed.data } } });
+    const result = await prisma.transaction.deleteMany({ where: { id: { in: parsed.data }, userId } });
     revalidate();
     return { success: true, count: result.count };
   } catch (error) {
@@ -287,19 +306,20 @@ export async function deleteTransactions(ids: unknown) {
 
 /** Muda a categoria de várias transações selecionadas de uma vez. */
 export async function updateTransactionsCategory(ids: unknown, categoryId: unknown) {
+  const { id: userId } = await requireUser();
   const parsed = idListSchema.safeParse(ids);
   if (!parsed.success) return { error: firstError(parsed.error) };
   if (typeof categoryId !== "string" || !categoryId) {
     return { error: "Selecione uma categoria" };
   }
 
-  const category = await prisma.category.findUnique({ where: { id: categoryId }, select: { type: true } });
+  const category = await prisma.category.findFirst({ where: { id: categoryId, userId }, select: { type: true } });
   if (!category) return { error: "Categoria não encontrada" };
 
   try {
     // Só muda transações do mesmo tipo da categoria (não põe "Salário" numa despesa)
     const result = await prisma.transaction.updateMany({
-      where: { id: { in: parsed.data }, type: category.type },
+      where: { id: { in: parsed.data }, userId, type: category.type },
       data: { categoryId },
     });
     revalidate();

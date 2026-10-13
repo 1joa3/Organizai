@@ -5,11 +5,32 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTheme, ThemeIcon, themeToggleLabel } from "./ThemeToggle";
 import { LogoMark } from "./Logo";
+import { signOut } from "@/lib/authActions";
+
+export interface SidebarUser {
+  name: string | null;
+  email: string | null;
+}
 
 interface SidebarProps {
   isExpanded: boolean;
   onToggle: () => void;
+  user: SidebarUser;
 }
+
+function initials(user: SidebarUser) {
+  const source = user.name?.trim() || user.email || "?";
+  const parts = source.split(/[\s@.]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "?") + (user.name && parts[1] ? parts[1][0] : "")).toUpperCase();
+}
+
+const LogoutIcon = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <path d="M16 17l5-5-5-5" />
+    <path d="M21 12H9" />
+  </svg>
+);
 
 const navItems = [
   {
@@ -68,7 +89,7 @@ function labelClass(isExpanded: boolean) {
   }`;
 }
 
-export default function Sidebar({ isExpanded, onToggle }: SidebarProps) {
+export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
   const pathname = usePathname();
   const [theme, toggleTheme] = useTheme();
 
@@ -167,13 +188,27 @@ export default function Sidebar({ isExpanded, onToggle }: SidebarProps) {
               isExpanded ? "bg-bg-surface border-border" : "bg-transparent border-transparent"
             }`}
           >
-            <div className="shrink-0 w-10 h-10 rounded-full bg-fg/10 flex items-center justify-center border border-fg/5">
-              <span className="text-sm font-mono-value text-fg">JF</span>
+            <div
+              className="shrink-0 w-10 h-10 rounded-full bg-fg/10 flex items-center justify-center border border-fg/5"
+              title={!isExpanded ? (user.name ?? user.email ?? undefined) : undefined}
+            >
+              <span className="text-sm font-mono-value text-fg">{initials(user)}</span>
             </div>
-            <div className={labelClass(isExpanded)}>
-              <p className="text-sm font-semibold text-fg">João Ferreira</p>
-              <p className="text-[10px] text-blue font-mono-value tracking-widest mt-0.5">PRO PLAN</p>
+            <div className={`min-w-0 flex-1 ${labelClass(isExpanded)}`}>
+              <p className="text-sm font-semibold text-fg truncate">{user.name ?? "Minha conta"}</p>
+              <p className="text-[11px] text-text-muted truncate mt-0.5">{user.email}</p>
             </div>
+            <form action={signOut} className={labelClass(isExpanded)}>
+              <button
+                type="submit"
+                title="Sair"
+                aria-label="Sair"
+                tabIndex={isExpanded ? 0 : -1}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-coral hover:bg-coral/10 transition-colors cursor-pointer"
+              >
+                {LogoutIcon}
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -194,7 +229,7 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-[10px] font-medium transition-colors duration-300 ${isActive ? "text-blue" : "text-text-muted"
+              className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium transition-colors duration-300 ${isActive ? "text-blue" : "text-text-muted"
                 }`}
             >
               <span className={isActive ? "drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""}>{item.icon}</span>
@@ -205,11 +240,20 @@ export function MobileBottomNav() {
         <button
           onClick={toggleTheme}
           aria-label={themeToggleLabel(theme)}
-          className="relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-[10px] font-medium text-text-muted transition-colors duration-300 cursor-pointer"
+          className="relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium text-text-muted transition-colors duration-300 cursor-pointer"
         >
           <ThemeIcon theme={theme} />
           Tema
         </button>
+        <form action={signOut}>
+          <button
+            type="submit"
+            className="relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium text-text-muted hover:text-coral transition-colors duration-300 cursor-pointer"
+          >
+            {LogoutIcon}
+            Sair
+          </button>
+        </form>
       </div>
     </nav>
   );

@@ -135,10 +135,9 @@ organizai/
 │  │  ├─ layout.tsx                   # shell global (nav, fonte, tema)
 │  │  ├─ page.tsx                     # dashboard
 │  │  ├─ DashboardClient.tsx
-│  │  ├─ login/
-│  │  │  ├─ page.tsx
-│  │  │  ├─ LoginForm.tsx
-│  │  │  └─ actions.ts               # valida AUTH_TOKEN, seta cookie httpOnly
+│  │  ├─ login/                     # entrar / criar conta (Supabase Auth)
+│  │  ├─ esqueci-senha/ · nova-senha/ # recuperação de senha
+│  │  ├─ auth/confirm/route.ts        # destino dos links enviados por e-mail
 │  │  ├─ transacoes/
 │  │  │  ├─ page.tsx                  # listagem filtrável por mês/ano (searchParams)
 │  │  │  ├─ TransactionsClient.tsx
@@ -280,6 +279,13 @@ Esses tokens vivem em `src/app/globals.css` (`:root`) e são expostos como class
 
 ---
 
+### 2026-10-14 — Multiusuário com Supabase Auth
+
+- **Login com e-mail e senha pelo Supabase Auth** (cadastro aberto, confirmação de e-mail, recuperação de senha), substituindo o token único `AUTH_TOKEN`. `src/lib/auth.ts`, `session.ts` e `rateLimit.ts` saíram — o Supabase já limita tentativas.
+- **Isolamento por linha:** `userId` em `Account`, `Category`, `Transaction`, `Investment` e `Goal`. Toda página e server action passa por `requireUser()` (`src/lib/dal.ts`) e filtra pelo usuário; actions exportadas nunca recebem `userId` de fora (podem ser chamadas direto do navegador). Atualizar/excluir usa `updateMany`/`deleteMany` com `{ id, userId }`, então um id de outro usuário simplesmente não é encontrado.
+- **Onboarding:** usuário novo ganha "Conta Principal" e as categorias padrão; os dados antigos (sem dono) vão para `LEGACY_OWNER_EMAIL` no primeiro login dele. `seed-production.ts` removido (virou redundante).
+- `userId` ainda é opcional no schema por causa dos dados antigos; depois que o dono original entrar, pode virar obrigatório numa migration.
+
 ## Débitos técnicos conhecidos
 
 | Item | Descrição | Risco |
@@ -304,5 +310,4 @@ Por ordem sugerida de valor/esforço:
 5. **PWA mobile** (Fase 6, pendente) — `manifest.json` + service worker básico (cache do shell) via `next-pwa` ou manual.
 6. **Exportar mais do que transações** — o CSV cobre só `/transacoes`; investimentos e metas também se beneficiariam de export para backup/planilha.
 7. **Testes de componentes** — a stack prevê Testing Library além do Vitest; hoje só há testes de lógica pura (`lib/`). Cobrir `TransactionsClient` (criação, exclusão, filtro) e `PeriodSelector` traria confiança na camada de UI.
-8. **Rate limiting / lockout no login** — o form de login atual aceita tentativas ilimitadas de token; um limite simples por IP/cookie evita força bruta caso a app fique pública.
-9. **Editar/excluir categorias e contas** — hoje só dá para criar; renomear cor/nome ou remover uma categoria sem uso precisa ser feito direto no banco.
+8. **Editar/excluir categorias e contas** — hoje só dá para criar; renomear cor/nome ou remover uma categoria sem uso precisa ser feito direto no banco.

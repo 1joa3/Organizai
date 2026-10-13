@@ -3,12 +3,13 @@ import type { DateRange } from "./period";
 import { getInstallmentInfo } from "./installments";
 
 /** Totais de receita e despesa no período */
-export async function getPeriodTotals({ start: startDate, end: endDate }: DateRange) {
+export async function getPeriodTotals(userId: string, { start: startDate, end: endDate }: DateRange) {
 
   const [receitas, despesas] = await Promise.all([
     prisma.transaction.aggregate({
       _sum: { amount: true },
       where: {
+        userId,
         type: "receita",
         date: { gte: startDate, lt: endDate },
       },
@@ -16,6 +17,7 @@ export async function getPeriodTotals({ start: startDate, end: endDate }: DateRa
     prisma.transaction.aggregate({
       _sum: { amount: true },
       where: {
+        userId,
         type: "despesa",
         date: { gte: startDate, lt: endDate },
       },
@@ -33,12 +35,13 @@ export async function getPeriodTotals({ start: startDate, end: endDate }: DateRa
 }
 
 /** Despesas agrupadas por categoria no período */
-export async function getExpensesByCategory({ start: startDate, end: endDate }: DateRange) {
+export async function getExpensesByCategory(userId: string, { start: startDate, end: endDate }: DateRange) {
 
   const result = await prisma.transaction.groupBy({
     by: ["categoryId"],
     _sum: { amount: true },
     where: {
+      userId,
       type: "despesa",
       date: { gte: startDate, lt: endDate },
     },
@@ -48,7 +51,7 @@ export async function getExpensesByCategory({ start: startDate, end: endDate }: 
   // Buscar nomes e cores das categorias
   const categoryIds = result.map((r) => r.categoryId);
   const categories = await prisma.category.findMany({
-    where: { id: { in: categoryIds } },
+    where: { id: { in: categoryIds }, userId },
   });
   const catMap = new Map(categories.map((c) => [c.id, c]));
 
@@ -61,8 +64,9 @@ export async function getExpensesByCategory({ start: startDate, end: endDate }: 
 }
 
 /** Total investido e valor atual de todos os investimentos */
-export async function getInvestmentTotals() {
+export async function getInvestmentTotals(userId: string) {
   const result = await prisma.investment.aggregate({
+    where: { userId },
     _sum: {
       investedAmount: true,
       currentAmount: true,
@@ -81,7 +85,7 @@ export async function getInvestmentTotals() {
 }
 
 /** Evolução patrimonial mensal (últimos 12 meses) */
-export async function getPatrimonyEvolution() {
+export async function getPatrimonyEvolution(userId: string) {
   const now = new Date();
   const months: { label: string; saldo: number; investido: number }[] = [];
 
@@ -93,15 +97,15 @@ export async function getPatrimonyEvolution() {
     const [receitas, despesas, investments] = await Promise.all([
       prisma.transaction.aggregate({
         _sum: { amount: true },
-        where: { type: "receita", date: { lt: endDate } },
+        where: { userId, type: "receita", date: { lt: endDate } },
       }),
       prisma.transaction.aggregate({
         _sum: { amount: true },
-        where: { type: "despesa", date: { lt: endDate } },
+        where: { userId, type: "despesa", date: { lt: endDate } },
       }),
       prisma.investment.aggregate({
         _sum: { currentAmount: true },
-        where: { date: { lt: endDate } },
+        where: { userId, date: { lt: endDate } },
       }),
     ]);
 
@@ -120,8 +124,9 @@ export async function getPatrimonyEvolution() {
 }
 
 /** Últimas N transações */
-export async function getRecentTransactions(limit = 5) {
+export async function getRecentTransactions(userId: string, limit = 5) {
   return prisma.transaction.findMany({
+    where: { userId },
     take: limit,
     orderBy: { date: "desc" },
     include: {
@@ -131,17 +136,19 @@ export async function getRecentTransactions(limit = 5) {
   });
 }
 
-export async function getGoalsSummary() {
+export async function getGoalsSummary(userId: string) {
   return prisma.goal.findMany({
+    where: { userId },
     orderBy: { createdAt: "desc" },
   });
 }
 
 /** Despesas parceladas agrupadas por descrição base no mês */
-export async function getInstallmentsSummary({ start: startDate, end: endDate }: DateRange) {
+export async function getInstallmentsSummary(userId: string, { start: startDate, end: endDate }: DateRange) {
 
   const transactions = await prisma.transaction.findMany({
     where: {
+      userId,
       type: "despesa",
       date: { gte: startDate, lt: endDate },
     },
@@ -201,12 +208,12 @@ export async function getInstallmentsSummary({ start: startDate, end: endDate }:
  * Resumo de dívidas parceladas em aberto: valor total restante, previsão de
  * quitação e a curva de saldo devedor mês a mês até zerar.
  */
-export async function getDebtsSummary() {
+export async function getDebtsSummary(userId: string) {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const transactions = await prisma.transaction.findMany({
-    where: { type: "despesa" },
+    where: { userId, type: "despesa" },
     include: { category: true },
   });
 
