@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import ClientLayout from "@/components/ui/ClientLayout";
+import { THEME_COOKIE, parseThemeCookie } from "@/lib/theme";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,10 +27,14 @@ export const metadata: Metadata = {
   description: "Controle financeiro de alta performance",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Sem escolha salva, o atributo fica de fora e o CSS segue o tema do sistema
+  const theme = parseThemeCookie((await cookies()).get(THEME_COOKIE)?.value);
+
   return (
     <html
       lang="pt-BR"
+      data-theme={theme ?? undefined}
       className={`${inter.variable} ${jetbrainsMono.variable} ${plusJakarta.variable} h-full`}
     >
       <body className="min-h-full bg-bg font-sans antialiased text-text selection:bg-blue selection:text-black">

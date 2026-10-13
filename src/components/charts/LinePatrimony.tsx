@@ -12,6 +12,7 @@ import {
   Filler,
 } from "chart.js";
 import { formatCurrency } from "@/lib/formatters";
+import { useThemeColors, withAlpha } from "./useThemeColors";
 
 ChartJS.register(
   CategoryScale,
@@ -34,9 +35,11 @@ interface LinePatrimonyProps {
 }
 
 export default function LinePatrimony({ data }: LinePatrimonyProps) {
+  const colors = useThemeColors();
+
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-text-muted text-sm border border-dashed border-white/10 rounded-lg">
+      <div className="flex items-center justify-center h-64 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Sem dados para exibir
       </div>
     );
@@ -48,34 +51,34 @@ export default function LinePatrimony({ data }: LinePatrimonyProps) {
       {
         label: "Saldo Acumulado",
         data: data.map((d) => d.saldo),
-        borderColor: "#00E5FF", // Neon Cyan
+        borderColor: colors.blue,
         backgroundColor: (context: any) => {
           const ctx = context.chart.ctx;
           const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, "rgba(0, 229, 255, 0.2)");
-          gradient.addColorStop(1, "rgba(0, 229, 255, 0)");
+          gradient.addColorStop(0, withAlpha(colors.blue, 0.2));
+          gradient.addColorStop(1, withAlpha(colors.blue, 0));
           return gradient;
         },
         fill: true,
         tension: 0.4, // Smoother curves
         pointRadius: 0, // Hide points until hover
         pointHoverRadius: 6,
-        pointBackgroundColor: "#00E5FF",
-        pointBorderColor: "#FFFFFF",
+        pointBackgroundColor: colors.blue,
+        pointBorderColor: colors.bg,
         pointBorderWidth: 2,
         borderWidth: 2,
       },
       {
         label: "Investido",
         data: data.map((d) => d.investido),
-        borderColor: "#FFB800", // Vibrant Gold
+        borderColor: colors.amber,
         backgroundColor: "transparent",
         fill: false,
         tension: 0.4,
         pointRadius: 0,
         pointHoverRadius: 6,
-        pointBackgroundColor: "#FFB800",
-        pointBorderColor: "#FFFFFF",
+        pointBackgroundColor: colors.amber,
+        pointBorderColor: colors.bg,
         pointBorderWidth: 2,
         borderWidth: 2,
         borderDash: [5, 5],
@@ -92,18 +95,18 @@ export default function LinePatrimony({ data }: LinePatrimonyProps) {
     },
     scales: {
       x: {
-        grid: { color: "rgba(255, 255, 255, 0.05)", drawBorder: false },
+        grid: { color: withAlpha(colors.fg, 0.05), drawBorder: false },
         ticks: {
-          color: "#52525B",
+          color: colors["text-muted"],
           font: { family: "'Inter', sans-serif", size: 11 },
           padding: 10,
         },
         border: { display: false },
       },
       y: {
-        grid: { color: "rgba(255, 255, 255, 0.05)", drawBorder: false },
+        grid: { color: withAlpha(colors.fg, 0.05), drawBorder: false },
         ticks: {
-          color: "#A1A1AA",
+          color: colors["text-dim"],
           font: { family: "'JetBrains Mono', monospace", size: 11 },
           padding: 10,
           callback: function (value: number | string) {
@@ -121,7 +124,7 @@ export default function LinePatrimony({ data }: LinePatrimonyProps) {
         position: "top" as const,
         align: "end" as const,
         labels: {
-          color: "#A1A1AA",
+          color: colors["text-dim"],
           font: { family: "'Inter', sans-serif", size: 12, weight: 500 as const },
           boxWidth: 12,
           boxHeight: 12,
@@ -130,11 +133,11 @@ export default function LinePatrimony({ data }: LinePatrimonyProps) {
         },
       },
       tooltip: {
-        backgroundColor: "rgba(20, 20, 25, 0.9)",
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        backgroundColor: colors["tooltip-bg"],
+        borderColor: colors.border,
         borderWidth: 1,
-        titleColor: "#FFFFFF",
-        bodyColor: "#F8F9FA",
+        titleColor: colors.fg,
+        bodyColor: colors.text,
         titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: 600 as const },
         bodyFont: { family: "'JetBrains Mono', monospace", size: 12 },
         padding: 12,

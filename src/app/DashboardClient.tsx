@@ -68,7 +68,7 @@ export default function DashboardClient({
         className="flex flex-wrap items-center justify-between gap-4"
       >
         <div className="flex items-baseline gap-4">
-          <h1 className="font-display text-4xl text-white tracking-tight">Dashboard</h1>
+          <h1 className="font-display text-4xl text-fg tracking-tight">Dashboard</h1>
           <p className="text-sm text-blue uppercase tracking-widest font-medium">{currentMonth}</p>
         </div>
         <PeriodSelector month={month} year={year} />
@@ -101,7 +101,7 @@ export default function DashboardClient({
           transition={{ delay: 0.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="col-span-12 lg:col-span-6 xl:col-span-7 glass-card p-6"
         >
-          <h2 className="font-display text-lg text-white mb-6">
+          <h2 className="font-display text-lg text-fg mb-6">
             Evolução Patrimonial
           </h2>
           <LinePatrimony data={patrimonyEvolution} />
@@ -115,7 +115,7 @@ export default function DashboardClient({
           className="col-span-12 glass-card p-6"
         >
           <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-            <h2 className="font-display text-lg text-white">Quitação de Dívidas</h2>
+            <h2 className="font-display text-lg text-fg">Quitação de Dívidas</h2>
             <div className="flex flex-wrap gap-6 sm:gap-8">
               <div>
                 <p className="text-[10px] font-medium text-text-dim uppercase tracking-wider mb-1">Total em dívidas</p>
@@ -125,7 +125,7 @@ export default function DashboardClient({
               </div>
               <div>
                 <p className="text-[10px] font-medium text-text-dim uppercase tracking-wider mb-1">Previsão de quitação</p>
-                <p className="font-mono-value text-lg text-white">
+                <p className="font-mono-value text-lg text-fg">
                   {debtsSummary.payoffDate
                     ? `${formatMonthYear(debtsSummary.payoffDate)} (${debtsSummary.monthsToPayoff} ${debtsSummary.monthsToPayoff === 1 ? "mês" : "meses"})`
                     : "—"}
@@ -143,7 +143,7 @@ export default function DashboardClient({
           transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="col-span-12 lg:col-span-4 xl:col-span-4 glass-card p-6"
         >
-          <h2 className="font-display text-lg text-white mb-6">
+          <h2 className="font-display text-lg text-fg mb-6">
             Despesas por Categoria
           </h2>
           <DonutCategories data={expensesByCategory} />
@@ -156,12 +156,12 @@ export default function DashboardClient({
           transition={{ delay: 0.35, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="col-span-12 lg:col-span-4 xl:col-span-4 glass-card p-6"
         >
-          <h2 className="font-display text-lg text-white mb-6 flex items-center justify-between">
+          <h2 className="font-display text-lg text-fg mb-6 flex items-center justify-between">
             Despesas Parceladas
             <span className="text-xs font-sans text-text-muted uppercase tracking-widest">{installmentsSummary.length} ativas</span>
           </h2>
           {installmentsSummary.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-text-muted border border-dashed border-white/10 rounded-lg">
+            <div className="flex-1 flex items-center justify-center text-sm text-text-muted border border-dashed border-fg/10 rounded-lg">
               Nenhum parcelamento
             </div>
           ) : (
@@ -169,7 +169,7 @@ export default function DashboardClient({
               {installmentsSummary.map((inst) => (
                 <div key={inst.name}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">{inst.name}</span>
+                    <span className="text-sm font-medium text-fg">{inst.name}</span>
                     <span className="font-mono-value text-xs text-text-dim">
                       {inst.currentInstallment}/{inst.totalInstallments} parcelas
                     </span>
@@ -198,12 +198,12 @@ export default function DashboardClient({
           transition={{ delay: 0.4, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="col-span-12 lg:col-span-4 xl:col-span-4 glass-card p-6 flex flex-col"
         >
-          <h2 className="font-display text-lg text-white mb-6 flex items-center justify-between">
+          <h2 className="font-display text-lg text-fg mb-6 flex items-center justify-between">
             Metas
             <span className="text-xs font-sans text-text-muted uppercase tracking-widest">{goals.length} ativas</span>
           </h2>
           {goals.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-text-muted border border-dashed border-white/10 rounded-lg">
+            <div className="flex-1 flex items-center justify-center text-sm text-text-muted border border-dashed border-fg/10 rounded-lg">
               Nenhuma meta cadastrada
             </div>
           ) : (
@@ -211,7 +211,7 @@ export default function DashboardClient({
               {goals.map((goal) => (
                 <div key={goal.id}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">{goal.name}</span>
+                    <span className="text-sm font-medium text-fg">{goal.name}</span>
                     <span className="font-mono-value text-xs text-text-dim">
                       {formatCurrency(goal.currentAmount)}
                     </span>
@@ -239,7 +239,7 @@ export default function DashboardClient({
           transition={{ delay: 0.5, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="col-span-12 lg:col-span-4 xl:col-span-4 glass-card p-6"
         >
-          <h2 className="font-display text-lg text-white mb-4">
+          <h2 className="font-display text-lg text-fg mb-4">
             Recentes
           </h2>
           <RecentTransactions transactions={recentTransactions} />

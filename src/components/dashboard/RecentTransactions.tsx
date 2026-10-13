@@ -23,7 +23,7 @@ export default function RecentTransactions({
 }: RecentTransactionsProps) {
   if (transactions.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-text-muted text-sm border border-dashed border-white/10 rounded-lg">
+      <div className="flex items-center justify-center py-12 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Nenhuma transação recente
       </div>
     );
@@ -37,7 +37,7 @@ export default function RecentTransactions({
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 + i * 0.08, ease: "easeOut" }}
-          className="group flex items-center justify-between p-4 bg-white/[0.02] hover:bg-white/[0.06] border border-transparent hover:border-white/10 rounded-xl transition-all duration-300"
+          className="group flex items-center justify-between p-4 bg-fg/[0.02] hover:bg-fg/[0.06] border border-transparent hover:border-fg/10 rounded-xl transition-all duration-300"
         >
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <div
@@ -52,13 +52,13 @@ export default function RecentTransactions({
               <CategoryIcon name={t.category.name} size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate">{t.description}</p>
+              <p className="text-sm font-medium text-fg truncate">{t.description}</p>
               <p className="text-xs text-text-dim mt-0.5 flex items-center gap-2">
                 <span className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: t.category.color, boxShadow: `0 0 5px ${t.category.color}` }} />
                   {t.category.name}
                 </span>
-                <span className="text-white/20">•</span>
+                <span className="text-fg/20">•</span>
                 <span>{t.account.name}</span>
               </p>
             </div>

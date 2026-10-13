@@ -4,7 +4,11 @@
    DESIGN SYSTEM: Cyber-Luxe Glassmorphism
    ═══════════════════════════════════════════════════ */
 
+/* Tema escuro (padrão). O claro vale quando o usuário escolhe pelo botão
+   (data-theme="light" no <html>) ou, sem escolha salva, quando o sistema
+   está em modo claro. */
 :root {
+  color-scheme: dark;
   --bg:          #030303;
   --bg-raised:   rgba(20, 20, 25, 0.4);
   --bg-surface:  rgba(30, 30, 40, 0.4);
@@ -12,12 +16,77 @@
   --text:        #F8F9FA;
   --text-dim:    #A1A1AA;
   --text-muted:  #52525B;
-  
+
+  /* Cor de primeiro plano: texto forte e as sobreposições translúcidas
+     (bg-fg/5, border-fg/10) que escurecem ou clareiam conforme o tema */
+  --fg:          #FFFFFF;
+  --panel:       #08080A;   /* sidebar e nav inferior */
+  --option:      #13161D;   /* <option> dos selects */
+  --well:        rgba(0, 0, 0, 0.4);
+  --backdrop:    rgba(0, 0, 0, 0.5);   /* fundo atrás de modais */
+  --shadow:      rgba(0, 0, 0, 0.5);
+  --tooltip-bg:  rgba(20, 20, 25, 0.9);
+  --dot-grid:    rgba(255, 255, 255, 0.05);
+
   /* Neon Palette */
   --emerald:     #CCFF00; /* Electric Lime */
   --coral:       #FF0055; /* Cyber Pink */
   --amber:       #FFB800; /* Vibrant Gold */
   --blue:        #00E5FF; /* Cyan */
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg:          #F4F5F7;
+    --bg-raised:   rgba(255, 255, 255, 0.75);
+    --bg-surface:  rgba(255, 255, 255, 0.65);
+    --border:      rgba(0, 0, 0, 0.08);
+    --text:        #0B0B0F;
+    --text-dim:    #52525B;
+    --text-muted:  #8A8A93;
+
+    --fg:          #0B0B0F;
+    --panel:       #FFFFFF;
+    --option:      #FFFFFF;
+    --well:        rgba(0, 0, 0, 0.05);
+    --backdrop:    rgba(15, 23, 42, 0.2);
+    --shadow:      rgba(15, 23, 42, 0.08);
+    --tooltip-bg:  rgba(255, 255, 255, 0.95);
+    --dot-grid:    rgba(0, 0, 0, 0.06);
+
+    /* Neons escurecidos para manter contraste sobre fundo claro */
+    --emerald:     #4D7C0F;
+    --coral:       #E11D48;
+    --amber:       #B45309;
+    --blue:        #0891B2;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+    --bg:          #F4F5F7;
+    --bg-raised:   rgba(255, 255, 255, 0.75);
+    --bg-surface:  rgba(255, 255, 255, 0.65);
+    --border:      rgba(0, 0, 0, 0.08);
+    --text:        #0B0B0F;
+    --text-dim:    #52525B;
+    --text-muted:  #8A8A93;
+
+    --fg:          #0B0B0F;
+    --panel:       #FFFFFF;
+    --option:      #FFFFFF;
+    --well:        rgba(0, 0, 0, 0.05);
+    --backdrop:    rgba(15, 23, 42, 0.2);
+    --shadow:      rgba(15, 23, 42, 0.08);
+    --tooltip-bg:  rgba(255, 255, 255, 0.95);
+    --dot-grid:    rgba(0, 0, 0, 0.06);
+
+    /* Neons escurecidos para manter contraste sobre fundo claro */
+    --emerald:     #4D7C0F;
+    --coral:       #E11D48;
+    --amber:       #B45309;
+    --blue:        #0891B2;
 }
 
 @theme inline {
@@ -32,6 +101,11 @@
   --color-coral:      var(--coral);
   --color-amber:      var(--amber);
   --color-blue:       var(--blue);
+  --color-fg:         var(--fg);
+  --color-panel:      var(--panel);
+  --color-option:     var(--option);
+  --color-well:       var(--well);
+  --color-backdrop:   var(--backdrop);
 
   --font-sans:  var(--font-inter);
   --font-serif: var(--font-jakarta);
@@ -80,7 +154,7 @@ body::after {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
+  background-image: radial-gradient(circle at 1px 1px, var(--dot-grid) 1px, transparent 0);
   background-size: 32px 32px;
   pointer-events: none;
 }
@@ -107,11 +181,11 @@ body::after {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1);
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
   border-radius: 6px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.2);
+  background: color-mix(in srgb, var(--fg) 20%, transparent);
 }
 
 /* ─── Utilitários UI ─── */
@@ -132,16 +206,16 @@ body::after {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   box-shadow: 
-    0 4px 24px -1px rgba(0, 0, 0, 0.5),
+    0 4px 24px -1px var(--shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: color-mix(in srgb, var(--fg) 15%, transparent);
   box-shadow: 
-    0 8px 32px -4px rgba(0, 0, 0, 0.6),
+    0 8px 32px -4px var(--shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 

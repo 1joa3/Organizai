@@ -282,7 +282,7 @@ export default function TransactionsClient({
       key: "description",
       label: "Descrição",
       sortable: true,
-      render: (t: any) => <span className="font-medium text-white">{t.description}</span>,
+      render: (t: any) => <span className="font-medium text-fg">{t.description}</span>,
     },
     {
       key: "category",
@@ -369,9 +369,9 @@ export default function TransactionsClient({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-white truncate">{t.description}</p>
+          <p className="text-sm font-medium text-fg truncate">{t.description}</p>
           <p className="text-xs text-text-dim mt-0.5 truncate">
-            {t.category.name} <span className="text-white/20">•</span> {t.account.name}
+            {t.category.name} <span className="text-fg/20">•</span> {t.account.name}
           </p>
           <p className="text-[11px] text-text-muted font-mono-value mt-0.5">{formatDate(t.date)}</p>
         </div>
@@ -419,7 +419,7 @@ export default function TransactionsClient({
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
-          <h1 className="font-display text-4xl text-white tracking-tight">Transações</h1>
+          <h1 className="font-display text-4xl text-fg tracking-tight">Transações</h1>
           <p className="text-sm text-text-dim mt-1">Gerencie suas receitas e despesas</p>
         </div>
         <Button onClick={openCreateModal}>Nova Transação</Button>
@@ -474,7 +474,7 @@ export default function TransactionsClient({
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-wrap items-center gap-3 p-3 glass-panel border border-blue/20"
         >
-          <span className="text-sm text-white font-medium px-1">
+          <span className="text-sm text-fg font-medium px-1">
             {selectedIds.size} selecionada{selectedIds.size > 1 ? "s" : ""}
           </span>
 
@@ -484,11 +484,11 @@ export default function TransactionsClient({
                 <select
                   value={bulkCategoryId}
                   onChange={(e) => setBulkCategoryId(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-blue focus:outline-none cursor-pointer"
+                  className="bg-fg/5 border border-fg/10 rounded-lg px-2.5 py-1.5 text-xs text-fg focus:border-blue focus:outline-none cursor-pointer"
                 >
-                  <option value="" className="bg-[#13161D]">Mudar categoria para...</option>
+                  <option value="" className="bg-option">Mudar categoria para...</option>
                   {bulkCategoryOptions.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-[#13161D]">{c.name}</option>
+                    <option key={c.id} value={c.id} className="bg-option">{c.name}</option>
                   ))}
                 </select>
                 <Button
@@ -539,14 +539,14 @@ export default function TransactionsClient({
             <label className="text-xs font-medium text-text-dim uppercase tracking-wider mb-2 block">
               Tipo
             </label>
-            <div className="flex gap-2 p-1 bg-white/5 rounded-lg border border-white/10">
+            <div className="flex gap-2 p-1 bg-fg/5 rounded-lg border border-fg/10">
               <button
                 type="button"
                 onClick={() => setSelectedType("despesa")}
                 className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer ${
                   selectedType === "despesa"
                     ? "bg-coral/15 text-coral border border-coral/30"
-                    : "text-text-dim hover:text-white border border-transparent"
+                    : "text-text-dim hover:text-fg border border-transparent"
                 }`}
               >
                 − Despesa
@@ -557,7 +557,7 @@ export default function TransactionsClient({
                 className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer ${
                   selectedType === "receita"
                     ? "bg-emerald/15 text-emerald border border-emerald/30"
-                    : "text-text-dim hover:text-white border border-transparent"
+                    : "text-text-dim hover:text-fg border border-transparent"
                 }`}
               >
                 + Receita
@@ -611,7 +611,7 @@ export default function TransactionsClient({
                   <button
                     type="button"
                     onClick={() => setIsAddingCategory(true)}
-                    className="text-xs text-blue hover:text-white transition-colors cursor-pointer"
+                    className="text-xs text-blue hover:text-fg transition-colors cursor-pointer"
                   >
                     + Nova
                   </button>
@@ -619,20 +619,20 @@ export default function TransactionsClient({
               </div>
 
               {isAddingCategory ? (
-                <div className="p-3 bg-white/5 border border-white/10 rounded-lg space-y-3">
+                <div className="p-3 bg-fg/5 border border-fg/10 rounded-lg space-y-3">
                   <div className="flex gap-2">
                     <input
                       autoFocus
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
                       placeholder="Nome da categoria"
-                      className="flex-1 min-w-0 px-3 py-2 text-sm bg-white/5 text-white border border-white/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
+                      className="flex-1 min-w-0 px-3 py-2 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
                     />
                     <input
                       type="color"
                       value={newCategoryColor}
                       onChange={(e) => setNewCategoryColor(e.target.value)}
-                      className="w-10 h-10 p-1 bg-black/40 border border-white/10 rounded cursor-pointer shrink-0"
+                      className="w-10 h-10 p-1 bg-well border border-fg/10 rounded cursor-pointer shrink-0"
                       aria-label="Cor da categoria"
                     />
                   </div>
@@ -678,7 +678,7 @@ export default function TransactionsClient({
             <Input name="installments" label="Parcelas" type="number" min="1" max="120" defaultValue="1" />
           )}
 
-          <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
+          <div className="pt-4 border-t border-fg/10 flex justify-end gap-3">
             <Button variant="ghost" type="button" onClick={closeModal}>
               Cancelar
             </Button>

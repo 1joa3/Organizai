@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "chart.js";
 import { formatCurrency } from "@/lib/formatters";
+import { useThemeColors, withAlpha } from "./useThemeColors";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -22,9 +23,11 @@ interface DebtPayoffChartProps {
 }
 
 export default function DebtPayoffChart({ timeline }: DebtPayoffChartProps) {
+  const colors = useThemeColors();
+
   if (timeline.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-text-muted text-sm border border-dashed border-white/10 rounded-lg">
+      <div className="flex items-center justify-center h-48 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Nenhuma dívida parcelada em aberto
       </div>
     );
@@ -36,8 +39,8 @@ export default function DebtPayoffChart({ timeline }: DebtPayoffChartProps) {
       {
         label: "Saldo devedor",
         data: timeline.map((t) => t.remaining),
-        backgroundColor: "rgba(251, 191, 36, 0.5)",
-        hoverBackgroundColor: "#FBBF24",
+        backgroundColor: withAlpha(colors.amber, 0.5),
+        hoverBackgroundColor: colors.amber,
         borderRadius: 4,
         maxBarThickness: 28,
       },
@@ -51,15 +54,15 @@ export default function DebtPayoffChart({ timeline }: DebtPayoffChartProps) {
       x: {
         grid: { display: false, drawBorder: false },
         ticks: {
-          color: "#52525B",
+          color: colors["text-muted"],
           font: { family: "'Inter', sans-serif", size: 11 },
         },
         border: { display: false },
       },
       y: {
-        grid: { color: "rgba(255, 255, 255, 0.05)", drawBorder: false },
+        grid: { color: withAlpha(colors.fg, 0.05), drawBorder: false },
         ticks: {
-          color: "#A1A1AA",
+          color: colors["text-dim"],
           font: { family: "'JetBrains Mono', monospace", size: 11 },
           callback: function (value: number | string) {
             const num = typeof value === "string" ? parseFloat(value) : value;
@@ -73,11 +76,11 @@ export default function DebtPayoffChart({ timeline }: DebtPayoffChartProps) {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: "rgba(20, 20, 25, 0.9)",
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        backgroundColor: colors["tooltip-bg"],
+        borderColor: colors.border,
         borderWidth: 1,
-        titleColor: "#FFFFFF",
-        bodyColor: "#F8F9FA",
+        titleColor: colors.fg,
+        bodyColor: colors.text,
         titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: 600 as const },
         bodyFont: { family: "'JetBrains Mono', monospace", size: 12 },
         padding: 12,

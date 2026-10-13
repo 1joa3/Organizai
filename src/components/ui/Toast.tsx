@@ -144,12 +144,12 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       className="pointer-events-auto relative overflow-hidden"
       style={{
         borderRadius: "14px",
-        background: "linear-gradient(135deg, rgba(22, 22, 30, 0.92) 0%, rgba(16, 16, 22, 0.96) 100%)",
+        background: "var(--tooltip-bg)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255, 255, 255, 0.06)",
+        border: "1px solid var(--border)",
         boxShadow: `
-          0 16px 48px -8px rgba(0, 0, 0, 0.6),
+          0 16px 48px -8px var(--shadow),
           0 0 40px -12px color-mix(in srgb, ${accentVar} 10%, transparent),
           inset 0 1px 0 rgba(255, 255, 255, 0.05)
         `,
@@ -186,14 +186,14 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         <div className="flex-1 min-w-0 pt-[2px]">
           <p
             className="text-[13px] font-semibold leading-tight tracking-tight"
-            style={{ color: "#F8F9FA" }}
+            style={{ color: "var(--text)" }}
           >
             {toast.title}
           </p>
           {toast.message && (
             <p
               className="text-[12px] mt-1 leading-relaxed"
-              style={{ color: "rgba(161, 161, 170, 0.8)" }}
+              style={{ color: "var(--text-dim)" }}
             >
               {toast.message}
             </p>
@@ -205,17 +205,17 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
           onClick={onDismiss}
           className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
           style={{
-            color: "rgba(161, 161, 170, 0.5)",
+            color: "var(--text-muted)",
             background: "transparent",
             border: "none",
             transition: "all 0.2s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = "#fff";
-            e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+            e.currentTarget.style.color = "var(--fg)";
+            e.currentTarget.style.background = "color-mix(in srgb, var(--fg) 8%, transparent)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.color = "rgba(161, 161, 170, 0.5)";
+            e.currentTarget.style.color = "var(--text-muted)";
             e.currentTarget.style.background = "transparent";
           }}
           aria-label="Fechar"
@@ -227,7 +227,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       </div>
 
       {/* Progress bar */}
-      <div style={{ height: "2px", background: "rgba(255,255,255,0.03)" }}>
+      <div style={{ height: "2px", background: "color-mix(in srgb, var(--fg) 3%, transparent)" }}>
         <motion.div
           initial={{ scaleX: 1 }}
           animate={{ scaleX: 0 }}

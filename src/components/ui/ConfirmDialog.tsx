@@ -100,7 +100,7 @@ export default function ConfirmDialog({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-md p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-backdrop backdrop-blur-md p-4"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 16 }}
@@ -122,7 +122,7 @@ export default function ConfirmDialog({
                 {config.icon}
               </div>
 
-              <h3 className="font-display text-lg text-white mb-2">{title}</h3>
+              <h3 className="font-display text-lg text-fg mb-2">{title}</h3>
               <p className="text-[13px] leading-relaxed text-text-dim max-w-[280px]">{message}</p>
             </div>
 

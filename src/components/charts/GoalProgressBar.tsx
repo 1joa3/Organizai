@@ -33,7 +33,7 @@ export default function GoalProgressBar({
         </div>
       )}
       <div
-        className="w-full bg-white/5 rounded-full overflow-hidden shadow-inner"
+        className="w-full bg-fg/5 rounded-full overflow-hidden shadow-inner"
         style={{ height }}
       >
         <motion.div

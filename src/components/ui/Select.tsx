@@ -35,10 +35,10 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           id={selectId}
           className={`
             w-full px-4 py-3 text-sm
-            bg-white/5 text-white
-            border border-white/10 rounded-lg
-            hover:border-white/20 hover:bg-white/10
-            focus:border-blue focus:bg-white/5 focus:outline-none focus:ring-4 focus:ring-blue/10
+            bg-fg/5 text-fg
+            border border-fg/10 rounded-lg
+            hover:border-fg/20 hover:bg-fg/10
+            focus:border-blue focus:bg-fg/5 focus:outline-none focus:ring-4 focus:ring-blue/10
             transition-all duration-300
             appearance-none cursor-pointer
             shadow-inner
@@ -53,12 +53,12 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           {...props}
         >
           {placeholder && (
-            <option value="" disabled className="bg-[#13161D]">
+            <option value="" disabled className="bg-option">
               {placeholder}
             </option>
           )}
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-[#13161D] text-white">
+            <option key={opt.value} value={opt.value} className="bg-option text-fg">
               {opt.label}
             </option>
           ))}

@@ -26,14 +26,14 @@ export default function HeroSaldo({ saldo, receitas, despesas }: HeroSaldoProps)
         </p>
         <p
           className={`font-mono-value text-3xl sm:text-4xl md:text-5xl font-light tracking-tight drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] ${
-            saldo >= 0 ? "text-white" : "text-coral"
+            saldo >= 0 ? "text-fg" : "text-coral"
           }`}
         >
           {formatCurrency(saldo)}
         </p>
       </div>
 
-      <div className="relative z-10 flex gap-10 mt-8 pt-6 border-t border-white/10">
+      <div className="relative z-10 flex gap-10 mt-8 pt-6 border-t border-fg/10">
         <div>
           <p className="text-xs font-medium text-text-dim uppercase tracking-wider mb-1">Receitas</p>
           <p className="font-mono-value text-lg text-emerald drop-shadow-[0_0_8px_rgba(204,255,0,0.3)]">

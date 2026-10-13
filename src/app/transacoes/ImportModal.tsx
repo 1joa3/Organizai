@@ -244,12 +244,12 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
     <Modal isOpen={isOpen} onClose={handleClose} title="Importar Fatura" eyebrow="CSV / Extrato" accent="blue" maxWidth="max-w-2xl">
       <div className="space-y-5">
         {/* Toggle de modo */}
-        <div className="flex gap-2 p-1 bg-white/5 rounded-lg border border-white/10">
+        <div className="flex gap-2 p-1 bg-fg/5 rounded-lg border border-fg/10">
           <button
             type="button"
             onClick={() => switchMode("csv")}
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${
-              inputMode === "csv" ? "bg-blue/15 text-blue border border-blue/30" : "text-text-dim hover:text-white border border-transparent"
+              inputMode === "csv" ? "bg-blue/15 text-blue border border-blue/30" : "text-text-dim hover:text-fg border border-transparent"
             }`}
           >
             Importar arquivo CSV
@@ -258,7 +258,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
             type="button"
             onClick={() => switchMode("manual")}
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${
-              inputMode === "manual" ? "bg-blue/15 text-blue border border-blue/30" : "text-text-dim hover:text-white border border-transparent"
+              inputMode === "manual" ? "bg-blue/15 text-blue border border-blue/30" : "text-text-dim hover:text-fg border border-transparent"
             }`}
           >
             Adicionar uma a uma
@@ -271,7 +271,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               <label className="text-xs font-medium text-text-dim uppercase tracking-wider mb-2 block">
                 Arquivo CSV
               </label>
-              <label className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-white/15 rounded-lg cursor-pointer hover:border-blue/40 hover:bg-white/5 transition-colors text-center">
+              <label className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-fg/15 rounded-lg cursor-pointer hover:border-blue/40 hover:bg-fg/5 transition-colors text-center">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-muted">
                   <path d="M12 16V4M12 4l-4 4M12 4l4 4" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" strokeLinecap="round" strokeLinejoin="round" />
@@ -294,7 +294,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                     setDescCol(-1);
                     setAmountCol(-1);
                   }}
-                  className="text-xs text-blue hover:text-white transition-colors cursor-pointer shrink-0 ml-3"
+                  className="text-xs text-blue hover:text-fg transition-colors cursor-pointer shrink-0 ml-3"
                 >
                   Trocar arquivo
                 </button>
@@ -323,20 +323,20 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                 value={manualDescription}
                 onChange={(e) => setManualDescription(e.target.value)}
                 placeholder="Descrição"
-                className="w-full px-3 py-2.5 text-sm bg-white/5 text-white border border-white/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
+                className="w-full px-3 py-2.5 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
               />
               <input
                 value={manualAmount}
                 onChange={(e) => setManualAmount(e.target.value)}
                 placeholder="0,00"
                 inputMode="decimal"
-                className="w-full sm:w-28 px-3 py-2.5 text-sm bg-white/5 text-white border border-white/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
+                className="w-full sm:w-28 px-3 py-2.5 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
               />
               <input
                 type="date"
                 value={manualDate}
                 onChange={(e) => setManualDate(e.target.value)}
-                className="w-full sm:w-40 px-3 py-2.5 text-sm bg-white/5 text-white border border-white/10 rounded-lg focus:border-blue focus:outline-none"
+                className="w-full sm:w-40 px-3 py-2.5 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg focus:border-blue focus:outline-none"
               />
             </div>
             <Button
@@ -420,11 +420,11 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               <table className="w-full text-xs">
                 <tbody>
                   {mappedRows.map((r, i) => (
-                    <tr key={i} className={`border-b border-white/5 last:border-b-0 ${!r.valid ? "opacity-50" : ""}`}>
+                    <tr key={i} className={`border-b border-fg/5 last:border-b-0 ${!r.valid ? "opacity-50" : ""}`}>
                       <td className="px-3 py-2 font-mono-value text-text-dim whitespace-nowrap">
                         {r.date ? formatDate(r.date) : "—"}
                       </td>
-                      <td className="px-3 py-2 text-white truncate max-w-[160px]">{r.description || "—"}</td>
+                      <td className="px-3 py-2 text-fg truncate max-w-[160px]">{r.description || "—"}</td>
                       <td className="px-2 py-2">
                         {r.valid ? (
                           <select
@@ -432,10 +432,10 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                             onChange={(e) =>
                               setCategoryOverrides((prev) => ({ ...prev, [i]: e.target.value }))
                             }
-                            className="w-full max-w-[130px] bg-white/5 border border-white/10 rounded px-1.5 py-1 text-[11px] text-white focus:border-blue focus:outline-none cursor-pointer"
+                            className="w-full max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
                           >
                             {filteredCategories.map((c) => (
-                              <option key={c.id} value={c.id} className="bg-[#13161D]">
+                              <option key={c.id} value={c.id} className="bg-option">
                                 {c.name}
                               </option>
                             ))}
@@ -469,7 +469,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
           </div>
         )}
 
-        <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
+        <div className="pt-4 border-t border-fg/10 flex justify-end gap-3">
           <Button variant="ghost" type="button" onClick={handleClose}>
             Cancelar
           </Button>

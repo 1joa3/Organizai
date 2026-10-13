@@ -45,7 +45,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
-          <h1 className="font-display text-4xl text-white tracking-tight">Investimentos</h1>
+          <h1 className="font-display text-4xl text-fg tracking-tight">Investimentos</h1>
           <p className="text-sm text-text-dim mt-1">Acompanhe sua carteira</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>Novo Aporte</Button>
@@ -64,7 +64,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
             transition={{ delay: i * 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="space-y-4"
           >
-            <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider border-b border-white/5 pb-2">
+            <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider border-b border-fg/5 pb-2">
               {typeLabels[type]}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -76,13 +76,13 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
                 return (
                   <div key={inv.id} className="glass-card p-5 group relative overflow-hidden">
                     {/* Hover highlight */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-fg/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     
                     <div className="relative z-10">
                       <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-medium text-white text-lg">{inv.asset}</h3>
+                        <h3 className="font-medium text-fg text-lg">{inv.asset}</h3>
                         <span
-                          className={`text-xs font-mono-value px-2 py-1 rounded bg-black/40 border ${
+                          className={`text-xs font-mono-value px-2 py-1 rounded bg-well border ${
                             rentabilidade >= 0 ? "text-emerald border-emerald/20" : "text-coral border-coral/20"
                           }`}
                         >
@@ -93,11 +93,11 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
                       <div className="space-y-3">
                         <div>
                           <p className="text-[10px] text-text-dim uppercase tracking-wider mb-0.5">Saldo Atual</p>
-                          <p className="font-mono-value text-xl text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+                          <p className="font-mono-value text-xl text-fg drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
                             {formatCurrency(current)}
                           </p>
                         </div>
-                        <div className="pt-3 border-t border-white/5">
+                        <div className="pt-3 border-t border-fg/5">
                           <p className="text-[10px] text-text-dim uppercase tracking-wider mb-0.5">Total Investido</p>
                           <p className="font-mono-value text-sm text-text-muted">
                             {formatCurrency(invested)}
@@ -114,7 +114,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
       })}
 
       {investments.length === 0 && (
-        <div className="flex items-center justify-center py-20 text-text-muted border border-dashed border-white/10 rounded-xl glass-panel">
+        <div className="flex items-center justify-center py-20 text-text-muted border border-dashed border-fg/10 rounded-xl glass-panel">
           Nenhum investimento cadastrado
         </div>
       )}
@@ -143,7 +143,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
 
           <Input name="date" label="Data do Aporte" type="date" required defaultValue={new Date().toISOString().split('T')[0]} />
 
-          <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
+          <div className="pt-4 border-t border-fg/10 flex justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
             <Button type="submit" loading={isLoading}>Salvar</Button>
           </div>

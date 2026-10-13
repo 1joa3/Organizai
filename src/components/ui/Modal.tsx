@@ -54,7 +54,7 @@ export default function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-backdrop backdrop-blur-md p-4"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 16 }}
@@ -70,18 +70,18 @@ export default function Modal({
             />
 
             {/* Header */}
-            <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-white/5">
+            <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-fg/5">
               <div className="min-w-0">
                 {eyebrow && (
                   <p className={`font-mono-value text-[10px] uppercase tracking-[0.15em] mb-1 ${accentClass.text}`}>
                     {eyebrow}
                   </p>
                 )}
-                <h2 className="font-display text-xl text-white truncate">{title}</h2>
+                <h2 className="font-display text-xl text-fg truncate">{title}</h2>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 flex items-center justify-center text-text-muted hover:text-white transition-all cursor-pointer shrink-0"
+                className="w-8 h-8 rounded-lg bg-fg/5 hover:bg-fg/10 border border-fg/5 hover:border-fg/15 flex items-center justify-center text-text-muted hover:text-fg transition-all cursor-pointer shrink-0"
                 aria-label="Fechar"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">

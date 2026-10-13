@@ -85,14 +85,14 @@ export default function Table<T extends Record<string, unknown>>({
       <div className={`overflow-x-auto glass-panel ${renderMobileItem ? "hidden md:block" : ""}`}>
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="border-b border-white/5 bg-white/5">
+            <tr className="border-b border-fg/5 bg-fg/5">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   onClick={col.sortable ? () => handleSort(col.key) : undefined}
                   className={`
                     px-5 py-4 text-left text-xs font-medium text-text-dim uppercase tracking-wider
-                    ${col.sortable ? "cursor-pointer select-none hover:text-white" : ""}
+                    ${col.sortable ? "cursor-pointer select-none hover:text-fg" : ""}
                     ${col.className ?? ""}
                   `}
                 >
@@ -132,8 +132,8 @@ export default function Table<T extends Record<string, unknown>>({
                   key={keyExtractor(item)}
                   onClick={onRowClick ? () => onRowClick(item) : undefined}
                   className={`
-                    border-b border-white/5 last:border-b-0
-                    hover:bg-white/5 transition-colors duration-200
+                    border-b border-fg/5 last:border-b-0
+                    hover:bg-fg/5 transition-colors duration-200
                     ${onRowClick ? "cursor-pointer" : ""}
                   `}
                 >

@@ -9,6 +9,7 @@ import {
 } from "chart.js";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { formatCurrency } from "@/lib/formatters";
+import { useThemeColors } from "./useThemeColors";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -23,9 +24,11 @@ interface DonutCategoriesProps {
 }
 
 export default function DonutCategories({ data }: DonutCategoriesProps) {
+  const colors = useThemeColors();
+
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-56 text-text-muted text-sm border border-dashed border-white/10 rounded-lg">
+      <div className="flex items-center justify-center h-56 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Sem dados para exibir
       </div>
     );
@@ -40,9 +43,9 @@ export default function DonutCategories({ data }: DonutCategoriesProps) {
       {
         data: data.map((d) => d.total),
         backgroundColor: glowColors,
-        borderColor: "rgba(3, 3, 3, 0.8)", // Match the background to create gaps
+        borderColor: colors.bg, // mesma cor do fundo, para criar os espaços
         borderWidth: 4,
-        hoverBorderColor: "#fff",
+        hoverBorderColor: colors.fg,
         hoverBorderWidth: 1,
         hoverOffset: 4,
       },
@@ -58,11 +61,11 @@ export default function DonutCategories({ data }: DonutCategoriesProps) {
         display: false,
       },
       tooltip: {
-        backgroundColor: "rgba(20, 20, 25, 0.9)",
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        backgroundColor: colors["tooltip-bg"],
+        borderColor: colors.border,
         borderWidth: 1,
-        titleColor: "#FFFFFF",
-        bodyColor: "#A1A1AA",
+        titleColor: colors.fg,
+        bodyColor: colors["text-dim"],
         titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: 600 as const },
         bodyFont: { family: "'JetBrains Mono', monospace", size: 12 },
         padding: 12,
@@ -87,7 +90,7 @@ export default function DonutCategories({ data }: DonutCategoriesProps) {
         {/* Centro do donut */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-1">Total</span>
-          <span className="font-mono-value text-lg text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+          <span className="font-mono-value text-lg text-fg drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
             {formatCurrency(total)}
           </span>
         </div>
@@ -107,13 +110,13 @@ export default function DonutCategories({ data }: DonutCategoriesProps) {
                   >
                     <CategoryIcon name={d.name} size={11} />
                   </span>
-                  <span className="text-sm font-medium text-text-dim group-hover:text-white transition-colors truncate">{d.name}</span>
+                  <span className="text-sm font-medium text-text-dim group-hover:text-fg transition-colors truncate">{d.name}</span>
                 </div>
                 <span className="font-mono-value text-[10px] text-text-muted shrink-0">
                   {percentage}%
                 </span>
               </div>
-              <span className="font-mono-value text-sm text-white block mt-0.5 pl-5">
+              <span className="font-mono-value text-sm text-fg block mt-0.5 pl-5">
                 {formatCurrency(d.total)}
               </span>
             </div>

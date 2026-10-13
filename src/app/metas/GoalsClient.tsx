@@ -43,7 +43,7 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
-          <h1 className="font-display text-4xl text-white tracking-tight">Metas</h1>
+          <h1 className="font-display text-4xl text-fg tracking-tight">Metas</h1>
           <p className="text-sm text-text-dim mt-1">Planeje e acompanhe seus objetivos</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>Nova Meta</Button>
@@ -61,8 +61,8 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
           >
             <div>
               <div className="flex justify-between items-start mb-6">
-                <h3 className="font-display text-xl text-white">{goal.name}</h3>
-                <span className="text-xs text-text-dim uppercase tracking-wider font-medium bg-black/40 px-2 py-1 rounded">
+                <h3 className="font-display text-xl text-fg">{goal.name}</h3>
+                <span className="text-xs text-text-dim uppercase tracking-wider font-medium bg-well px-2 py-1 rounded">
                   Alvo: {formatCurrency(Number(goal.targetAmount))}
                 </span>
               </div>
@@ -75,7 +75,7 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
               />
               
               <div className="flex justify-between items-center mt-3">
-                <span className="text-sm font-mono-value text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
+                <span className="text-sm font-mono-value text-fg drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
                   {formatCurrency(Number(goal.currentAmount))}
                 </span>
                 {goal.deadline && (
@@ -86,7 +86,7 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-white/5 flex justify-end">
+            <div className="mt-8 pt-4 border-t border-fg/5 flex justify-end">
               <Button
                 variant="glass"
                 size="sm"
@@ -103,7 +103,7 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
       </div>
 
       {goals.length === 0 && (
-        <div className="flex items-center justify-center py-20 text-text-muted border border-dashed border-white/10 rounded-xl glass-panel">
+        <div className="flex items-center justify-center py-20 text-text-muted border border-dashed border-fg/10 rounded-xl glass-panel">
           Nenhuma meta cadastrada
         </div>
       )}
@@ -123,13 +123,13 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-text-dim uppercase tracking-wider">Cor de Destaque</label>
               <div className="flex items-center gap-3">
-                <input type="color" name="color" defaultValue="#00E5FF" className="w-10 h-10 p-1 bg-black/40 border border-white/10 rounded cursor-pointer" />
+                <input type="color" name="color" defaultValue="#00E5FF" className="w-10 h-10 p-1 bg-well border border-fg/10 rounded cursor-pointer" />
                 <span className="text-xs text-text-muted">Selecione uma cor neon</span>
               </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
+          <div className="pt-4 border-t border-fg/10 flex justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
             <Button type="submit" loading={isLoading}>Criar Meta</Button>
           </div>
@@ -140,7 +140,7 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={`Aporte: ${selectedGoal?.name}`} eyebrow="Aporte" accent="emerald">
         <form onSubmit={handleAddAmount} className="space-y-5">
           <Input name="amount" label="Valor do Aporte" type="number" step="0.01" required autoFocus />
-          <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
+          <div className="pt-4 border-t border-fg/10 flex justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setIsAddModalOpen(false)}>Cancelar</Button>
             <Button type="submit" loading={isLoading}>Registrar</Button>
           </div>
