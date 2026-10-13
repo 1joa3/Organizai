@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import ClientLayout from "@/components/ui/ClientLayout";
 import { THEME_COOKIE, parseThemeCookie } from "@/lib/theme";
+import { SIDEBAR_COOKIE, parseSidebarCookie } from "@/lib/sidebar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -29,7 +30,9 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Sem escolha salva, o atributo fica de fora e o CSS segue o tema do sistema
-  const theme = parseThemeCookie((await cookies()).get(THEME_COOKIE)?.value);
+  const cookieStore = await cookies();
+  const theme = parseThemeCookie(cookieStore.get(THEME_COOKIE)?.value);
+  const sidebarExpanded = parseSidebarCookie(cookieStore.get(SIDEBAR_COOKIE)?.value);
 
   return (
     <html
@@ -38,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${inter.variable} ${jetbrainsMono.variable} ${plusJakarta.variable} h-full`}
     >
       <body className="min-h-full bg-bg font-sans antialiased text-text selection:bg-blue selection:text-black">
-        <ClientLayout>{children}</ClientLayout>
+        <ClientLayout initialSidebarExpanded={sidebarExpanded}>{children}</ClientLayout>
       </body>
     </html>
   );

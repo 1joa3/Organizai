@@ -3,18 +3,30 @@
 import { useState } from "react";
 import Sidebar, { MobileBottomNav } from "./Sidebar";
 import { ToastProvider } from "./Toast";
+import { saveSidebarCookie } from "@/lib/sidebar";
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export default function ClientLayout({
+  children,
+  initialSidebarExpanded = false,
+}: {
+  children: React.ReactNode;
+  initialSidebarExpanded?: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(initialSidebarExpanded);
+
+  function toggleSidebar() {
+    saveSidebarCookie(!isExpanded);
+    setIsExpanded(!isExpanded);
+  }
 
   return (
     <ToastProvider>
       <div className="min-h-screen bg-bg">
-        <Sidebar isExpanded={isExpanded} onToggle={() => setIsExpanded(!isExpanded)} />
+        <Sidebar isExpanded={isExpanded} onToggle={toggleSidebar} />
         <MobileBottomNav />
 
         <div
-          className={`transition-all duration-300 ease-in-out min-h-screen flex flex-col ${
+          className={`transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-screen flex flex-col ${
             isExpanded ? "md:pl-64" : "md:pl-20"
           }`}
         >

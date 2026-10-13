@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useTheme, ThemeIcon, themeToggleLabel } from "./ThemeToggle";
 import { LogoMark } from "./Logo";
 
@@ -59,20 +59,31 @@ const navItems = [
   },
 ];
 
+// Larguras: fechado 80px (w-20), aberto 256px (w-64). Os ícones ficam
+// sempre no mesmo lugar (centralizados na faixa de 80px); ao abrir, só os
+// textos aparecem com fade, sem nada pular de posição.
+function labelClass(isExpanded: boolean) {
+  return `whitespace-nowrap transition-opacity ${
+    isExpanded ? "opacity-100 duration-300 delay-100" : "opacity-0 duration-150"
+  }`;
+}
+
 export default function Sidebar({ isExpanded, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const [theme, toggleTheme] = useTheme();
 
   return (
     <aside
-      className={`hidden md:flex fixed left-0 top-0 h-screen transition-all duration-300 ease-in-out bg-panel/80 backdrop-blur-3xl border-r border-fg/5 flex-col z-50 shadow-[4px_0_24px_var(--shadow)] ${isExpanded ? "w-64" : "w-20"
-        }`}
+      className={`hidden md:block fixed left-0 top-0 h-screen z-50 bg-panel/80 backdrop-blur-3xl border-r border-fg/5 shadow-[4px_0_24px_var(--shadow)] transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isExpanded ? "w-64" : "w-20"
+      }`}
     >
-      {/* Toggle Button */}
+      {/* Botão abrir/fechar */}
       <button
         onClick={onToggle}
-        className="absolute -right-3.5 top-10 w-7 h-7 bg-bg-raised border border-fg/10 rounded-full flex items-center justify-center text-text-dim hover:text-fg hover:border-fg/30 hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all z-50 cursor-pointer"
+        className="absolute -right-3.5 top-10 w-7 h-7 bg-panel border border-fg/10 rounded-full flex items-center justify-center text-text-dim hover:text-fg hover:border-fg/30 hover:scale-110 transition-all duration-200 z-50 cursor-pointer"
         aria-label={isExpanded ? "Recolher menu" : "Expandir menu"}
+        aria-expanded={isExpanded}
       >
         <svg
           width="14"
@@ -83,123 +94,87 @@ export default function Sidebar({ isExpanded, onToggle }: SidebarProps) {
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`transition-transform duration-300 ${isExpanded ? "rotate-0" : "rotate-180"
-            }`}
+          className={`transition-transform duration-300 ${isExpanded ? "rotate-0" : "rotate-180"}`}
         >
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
 
-      {/* Logo */}
-      <div className={`px-4 py-8 flex ${isExpanded ? "items-center" : "justify-center"} h-24`}>
-        <div className="flex items-center gap-3 overflow-hidden">
+      <div className="h-full flex flex-col overflow-hidden">
+        {/* Logo */}
+        <div className="h-24 px-5 flex items-center gap-3 shrink-0">
           <LogoMark size={40} />
-          <AnimatePresence mode="wait">
-            {isExpanded && (
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.2 }}
-                className="font-display text-2xl tracking-tight text-fg whitespace-nowrap"
-              >
-                Organiz
-                <span className="bg-gradient-to-br from-blue to-emerald bg-clip-text text-transparent">AI</span>
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-2">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={!isExpanded ? item.label : undefined}
-              className={`
-                relative flex items-center gap-3 py-3 rounded-xl text-sm font-medium
-                transition-all duration-300 group
-                ${isExpanded ? "px-4" : "px-0 justify-center"}
-                ${isActive
-                  ? "text-fg"
-                  : "text-text-muted hover:text-fg"
-                }
-              `}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="sidebar-active"
-                  className="absolute inset-0 bg-fg/[0.08] border border-fg/10 rounded-xl pointer-events-none"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-
-              {!isActive && (
-                <div className="absolute inset-0 bg-fg/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl pointer-events-none" />
-              )}
-
-              <span className={`relative z-10 shrink-0 ${isActive ? "text-blue drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""}`}>
-                {item.icon}
-              </span>
-
-              <AnimatePresence mode="wait">
-                {isExpanded && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="relative z-10 whitespace-nowrap overflow-hidden"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Tema */}
-      <div className="px-3">
-        <button
-          onClick={toggleTheme}
-          title={!isExpanded ? themeToggleLabel(theme) : undefined}
-          aria-label={themeToggleLabel(theme)}
-          className={`relative w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium text-text-muted hover:text-fg hover:bg-fg/5 transition-all duration-300 cursor-pointer ${isExpanded ? "px-4" : "px-0 justify-center"}`}
-        >
-          <span className="shrink-0">
-            <ThemeIcon theme={theme} />
+          <span className={`font-display text-2xl tracking-tight text-fg ${labelClass(isExpanded)}`}>
+            Organiz
+            <span className="bg-gradient-to-br from-blue to-emerald bg-clip-text text-transparent">AI</span>
           </span>
-          {isExpanded && <span className="whitespace-nowrap overflow-hidden">{themeToggleLabel(theme)}</span>}
-        </button>
-      </div>
+        </div>
 
-      {/* Footer */}
-      <div className={`px-4 py-6 mt-auto ${!isExpanded ? "flex justify-center" : ""}`}>
-        <div className={`glass-panel p-3 flex items-center gap-3 transition-all ${!isExpanded ? "justify-center bg-transparent border-transparent" : ""}`}>
-          <div className="shrink-0 w-10 h-10 rounded-full bg-fg/10 flex items-center justify-center border border-fg/5">
-            <span className="text-sm font-mono-value text-fg">JF</span>
-          </div>
-          <AnimatePresence mode="wait">
-            {isExpanded && (
-              <motion.div
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden whitespace-nowrap"
+        {/* Navegação */}
+        <nav className="flex-1 px-3 py-4 space-y-2">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={!isExpanded ? item.label : undefined}
+                className={`relative flex items-center gap-3 h-12 pl-[18px] rounded-xl text-sm font-medium transition-colors duration-200 group ${
+                  isActive ? "text-fg" : "text-text-muted hover:text-fg"
+                }`}
               >
-                <p className="text-sm font-semibold text-fg">João Ferreira</p>
-                <p className="text-[10px] text-blue font-mono-value tracking-widest mt-0.5">PRO PLAN</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active"
+                    className="absolute inset-0 bg-fg/[0.08] border border-fg/10 rounded-xl pointer-events-none"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+
+                {!isActive && (
+                  <div className="absolute inset-0 bg-fg/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl pointer-events-none" />
+                )}
+
+                <span className={`relative z-10 shrink-0 ${isActive ? "text-blue drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""}`}>
+                  {item.icon}
+                </span>
+                <span className={`relative z-10 ${labelClass(isExpanded)}`}>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Tema */}
+        <div className="px-3">
+          <button
+            onClick={toggleTheme}
+            title={!isExpanded ? themeToggleLabel(theme) : undefined}
+            aria-label={themeToggleLabel(theme)}
+            className="w-full flex items-center gap-3 h-12 pl-[18px] rounded-xl text-sm font-medium text-text-muted hover:text-fg hover:bg-fg/5 transition-colors duration-200 cursor-pointer"
+          >
+            <span className="shrink-0">
+              <ThemeIcon theme={theme} />
+            </span>
+            <span className={labelClass(isExpanded)}>{themeToggleLabel(theme)}</span>
+          </button>
+        </div>
+
+        {/* Perfil */}
+        <div className="px-3 py-6">
+          <div
+            className={`flex items-center gap-3 p-2 rounded-xl border transition-colors duration-300 ${
+              isExpanded ? "bg-bg-surface border-border" : "bg-transparent border-transparent"
+            }`}
+          >
+            <div className="shrink-0 w-10 h-10 rounded-full bg-fg/10 flex items-center justify-center border border-fg/5">
+              <span className="text-sm font-mono-value text-fg">JF</span>
+            </div>
+            <div className={labelClass(isExpanded)}>
+              <p className="text-sm font-semibold text-fg">João Ferreira</p>
+              <p className="text-[10px] text-blue font-mono-value tracking-widest mt-0.5">PRO PLAN</p>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
