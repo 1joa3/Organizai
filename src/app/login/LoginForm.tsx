@@ -45,7 +45,7 @@ export default function LoginForm({ next, linkError }: { next?: string; linkErro
       {mode === "signin" ? (
         <form action={signInAction} className="space-y-4">
           <input type="hidden" name="next" value={next ?? "/"} />
-          <Input name="email" type="email" label="E-mail" autoComplete="email" required autoFocus />
+          <Input name="email" type="email" label="E-mail" autoComplete="email" required autoFocus defaultValue={signInState.fields?.email} />
           <Input name="password" type="password" label="Senha" autoComplete="current-password" required />
           <div className="flex justify-end -mt-1">
             <Link href="/esqueci-senha" className="text-xs text-blue hover:underline">
@@ -58,8 +58,8 @@ export default function LoginForm({ next, linkError }: { next?: string; linkErro
         </form>
       ) : (
         <form action={signUpAction} className="space-y-4">
-          <Input name="name" label="Nome" autoComplete="name" required autoFocus />
-          <Input name="email" type="email" label="E-mail" autoComplete="email" required />
+          <Input name="name" label="Nome" autoComplete="name" required autoFocus defaultValue={signUpState.fields?.name} />
+          <Input name="email" type="email" label="E-mail" autoComplete="email" required defaultValue={signUpState.fields?.email} />
           <Input
             name="password"
             type="password"

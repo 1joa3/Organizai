@@ -2,12 +2,20 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServerClient } from "./supabase/server";
 
 export interface AuthState {
   error?: string;
   message?: string;
+  /** O que foi digitado, para preencher de volta: o React limpa o formulário depois da action */
+  fields?: { name?: string; email?: string };
+}
+
+function typed(formData: FormData) {
+  const get = (k: string) => (typeof formData.get(k) === "string" ? (formData.get(k) as string) : undefined);
+  return { name: get("name"), email: get("email") };
 }
 
 const email = z.string({ error: "Informe o e-mail" }).trim().toLowerCase().email("E-mail inválido");
@@ -56,11 +64,11 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
     email: formData.get("email"),
     password: formData.get("password"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: parsed.error.issues[0].message, fields: typed(formData) };
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: authErrorMessage(error) };
+  if (error) return { error: authErrorMessage(error), fields: typed(formData) };
 
   redirect(safeNext(formData.get("next")));
 }
@@ -69,7 +77,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const parsed = z
     .object({ name: z.string().trim().min(1, "Informe seu nome").max(80), email, password })
     .safeParse({ name: formData.get("name"), email: formData.get("email"), password: formData.get("password") });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: parsed.error.issues[0].message, fields: typed(formData) };
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
@@ -80,7 +88,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
       emailRedirectTo: `${await siteOrigin()}/auth/confirm?next=/`,
     },
   });
-  if (error) return { error: authErrorMessage(error) };
+  if (error) return { error: authErrorMessage(error), fields: typed(formData) };
 
   // Com confirmação de e-mail ligada (padrão do Supabase) ainda não há sessão
   if (!data.session) {
@@ -91,7 +99,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
 
 export async function requestPasswordReset(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = email.safeParse(formData.get("email"));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: parsed.error.issues[0].message, fields: typed(formData) };
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
@@ -115,6 +123,34 @@ export async function updatePassword(_prev: AuthState, formData: FormData): Prom
   if (error) return { error: authErrorMessage(error) };
 
   redirect("/");
+}
+
+export async function updateProfile(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const parsed = z.string().trim().min(1, "Informe seu nome").max(80, "Nome longo demais").safeParse(formData.get("name"));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({ data: { name: parsed.data } });
+  if (error) return { error: authErrorMessage(error) };
+  // O nome vem do token: renova a sessão para o menu mostrar o nome novo já
+  await supabase.auth.refreshSession();
+
+  revalidatePath("/", "layout");
+  return { message: "Nome atualizado." };
+}
+
+/** Troca de senha de dentro do app (usuário já logado). */
+export async function changePassword(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const parsed = z
+    .object({ password, confirm: z.string() })
+    .refine((d) => d.password === d.confirm, "As senhas não conferem")
+    .safeParse({ password: formData.get("password"), confirm: formData.get("confirm") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) return { error: authErrorMessage(error) };
+  return { message: "Senha alterada." };
 }
 
 export async function signOut() {

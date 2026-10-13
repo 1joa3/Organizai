@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, ThemeIcon, themeToggleLabel } from "./ThemeToggle";
 import { LogoMark } from "./Logo";
 import { signOut } from "@/lib/authActions";
@@ -23,6 +24,13 @@ function initials(user: SidebarUser) {
   const parts = source.split(/[\s@.]+/).filter(Boolean);
   return ((parts[0]?.[0] ?? "?") + (user.name && parts[1] ? parts[1][0] : "")).toUpperCase();
 }
+
+const ProfileIcon = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21v-1a7 7 0 0 1 14 0v1" />
+  </svg>
+);
 
 const LogoutIcon = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -92,6 +100,26 @@ function labelClass(isExpanded: boolean) {
 export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
   const pathname = usePathname();
   const [theme, toggleTheme] = useTheme();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userButtonRef = useRef<HTMLButtonElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (!userMenuRef.current?.contains(target) && !userButtonRef.current?.contains(target)) setUserMenuOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setUserMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [userMenuOpen]);
 
   return (
     <aside
@@ -181,37 +209,80 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
           </button>
         </div>
 
-        {/* Perfil */}
+        {/* Usuário: abre o menu com "Meu perfil" e "Sair" (funciona aberto ou fechado) */}
         <div className="px-3 py-6">
-          <div
-            className={`flex items-center gap-3 p-2 rounded-xl border transition-colors duration-300 ${
-              isExpanded ? "bg-bg-surface border-border" : "bg-transparent border-transparent"
+          <button
+            ref={userButtonRef}
+            type="button"
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            aria-haspopup="menu"
+            aria-expanded={userMenuOpen}
+            title={!isExpanded ? (user.name ?? user.email ?? undefined) : undefined}
+            className={`w-full flex items-center gap-3 p-2 rounded-xl border text-left transition-colors duration-300 cursor-pointer hover:bg-fg/5 ${
+              isExpanded || userMenuOpen ? "bg-bg-surface border-border" : "bg-transparent border-transparent"
             }`}
           >
-            <div
-              className="shrink-0 w-10 h-10 rounded-full bg-fg/10 flex items-center justify-center border border-fg/5"
-              title={!isExpanded ? (user.name ?? user.email ?? undefined) : undefined}
-            >
+            <span className="shrink-0 w-10 h-10 rounded-full bg-fg/10 flex items-center justify-center border border-fg/5">
               <span className="text-sm font-mono-value text-fg">{initials(user)}</span>
-            </div>
-            <div className={`min-w-0 flex-1 ${labelClass(isExpanded)}`}>
-              <p className="text-sm font-semibold text-fg truncate">{user.name ?? "Minha conta"}</p>
-              <p className="text-[11px] text-text-muted truncate mt-0.5">{user.email}</p>
-            </div>
-            <form action={signOut} className={labelClass(isExpanded)}>
-              <button
-                type="submit"
-                title="Sair"
-                aria-label="Sair"
-                tabIndex={isExpanded ? 0 : -1}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-coral hover:bg-coral/10 transition-colors cursor-pointer"
-              >
-                {LogoutIcon}
-              </button>
-            </form>
-          </div>
+            </span>
+            <span className={`min-w-0 flex-1 ${labelClass(isExpanded)}`}>
+              <span className="block text-sm font-semibold text-fg truncate">{user.name ?? "Minha conta"}</span>
+              <span className="block text-[11px] text-text-muted truncate mt-0.5">{user.email}</span>
+            </span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`shrink-0 text-text-muted transition-transform duration-200 ${labelClass(isExpanded)} ${userMenuOpen ? "rotate-180" : ""}`}
+            >
+              <path d="M18 15l-6-6-6 6" />
+            </svg>
+          </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {userMenuOpen && (
+          <motion.div
+            ref={userMenuRef}
+            role="menu"
+            initial={{ opacity: 0, x: -6, scale: 0.97 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -6, scale: 0.97 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute bottom-6 left-full ml-3 w-60 rounded-xl border border-fg/10 bg-panel p-1.5 shadow-[0_16px_48px_-8px_var(--shadow)] z-50 origin-bottom-left"
+          >
+            <div className="px-3 py-2.5 border-b border-fg/5 mb-1">
+              <p className="text-sm font-semibold text-fg truncate">{user.name ?? "Minha conta"}</p>
+              <p className="text-xs text-text-muted truncate">{user.email}</p>
+            </div>
+            <Link
+              href="/perfil"
+              role="menuitem"
+              onClick={() => setUserMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-text-dim hover:text-fg hover:bg-fg/5 transition-colors"
+            >
+              {ProfileIcon}
+              Meu perfil
+            </Link>
+            <form action={signOut}>
+              <button
+                type="submit"
+                role="menuitem"
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-text-dim hover:text-coral hover:bg-coral/10 transition-colors cursor-pointer"
+              >
+                {LogoutIcon}
+                Sair
+              </button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </aside>
   );
 }
@@ -245,15 +316,15 @@ export function MobileBottomNav() {
           <ThemeIcon theme={theme} />
           Tema
         </button>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium text-text-muted hover:text-coral transition-colors duration-300 cursor-pointer"
-          >
-            {LogoutIcon}
-            Sair
-          </button>
-        </form>
+        <Link
+          href="/perfil"
+          className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium transition-colors duration-300 ${
+            pathname === "/perfil" ? "text-blue" : "text-text-muted"
+          }`}
+        >
+          {ProfileIcon}
+          Perfil
+        </Link>
       </div>
     </nav>
   );

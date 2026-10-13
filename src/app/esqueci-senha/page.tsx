@@ -14,7 +14,7 @@ export default function EsqueciSenhaPage() {
     <AuthCard title="Esqueci minha senha" subtitle="Enviamos um link para você criar uma senha nova">
       <form action={action} className="space-y-4">
         <FormMessage error={state.error} message={state.message} />
-        <Input name="email" type="email" label="E-mail" autoComplete="email" required autoFocus />
+        <Input name="email" type="email" label="E-mail" autoComplete="email" required autoFocus defaultValue={state.fields?.email} />
         <Button type="submit" className="w-full" loading={pending}>
           Enviar link
         </Button>
