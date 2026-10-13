@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, ThemeIcon, themeToggleLabel } from "./ThemeToggle";
+import { LogoMark } from "./Logo";
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -92,11 +93,7 @@ export default function Sidebar({ isExpanded, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className={`px-4 py-8 flex ${isExpanded ? "items-center" : "justify-center"} h-24`}>
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue to-emerald flex items-center justify-center shadow-[0_0_20px_rgba(0,229,255,0.3)]">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-          </div>
+          <LogoMark size={40} />
           <AnimatePresence mode="wait">
             {isExpanded && (
               <motion.span
@@ -106,7 +103,8 @@ export default function Sidebar({ isExpanded, onToggle }: SidebarProps) {
                 transition={{ duration: 0.2 }}
                 className="font-display text-2xl tracking-tight text-fg whitespace-nowrap"
               >
-                OrganizAI
+                Organiz
+                <span className="bg-gradient-to-br from-blue to-emerald bg-clip-text text-transparent">AI</span>
               </motion.span>
             )}
           </AnimatePresence>
