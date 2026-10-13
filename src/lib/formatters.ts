@@ -53,7 +53,9 @@ export function formatDateShort(date: Date | string): string {
  */
 export function formatDateInput(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return d.toISOString().split("T")[0];
+  // Componentes locais: as datas são guardadas ao meio-dia UTC, que é o
+  // mesmo dia no fuso do usuário; "hoje" também é o dia local, não o UTC
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /**

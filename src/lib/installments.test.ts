@@ -4,6 +4,8 @@ import {
   escapeRegExp,
   addMonthsClamped,
   splitInstallmentAmounts,
+  getInstallmentInfo,
+  importInstallmentKey,
 } from "./installments";
 
 describe("parseInstallmentDescription", () => {
@@ -79,5 +81,33 @@ describe("splitInstallmentAmounts", () => {
       const cents = splitInstallmentAmounts(total, count).reduce((s, a) => s + Math.round(a * 100), 0);
       expect(cents).toBe(Math.round(total * 100));
     }
+  });
+});
+
+describe("getInstallmentInfo", () => {
+  it("usa os campos próprios quando existem, mesmo com a descrição editada", () => {
+    expect(getInstallmentInfo({ description: "Notebook Dell", installmentNumber: 2, installmentTotal: 10 })).toEqual({
+      baseName: "Notebook Dell",
+      current: 2,
+      total: 10,
+    });
+  });
+
+  it("cai para a descrição em transações antigas sem os campos", () => {
+    expect(getInstallmentInfo({ description: "Notebook (3/10)" })).toEqual({ baseName: "Notebook", current: 3, total: 10 });
+    expect(getInstallmentInfo({ description: "Mercado", installmentNumber: null, installmentTotal: null })).toBeNull();
+  });
+});
+
+describe("importInstallmentKey", () => {
+  it("agrupa parcelas da mesma compra e separa por categoria e total", () => {
+    const a = importInstallmentKey({ description: "Loja (2/6)", type: "despesa", categoryId: "c1" });
+    const b = importInstallmentKey({ description: "Loja (3/6)", type: "despesa", categoryId: "c1" });
+    const c = importInstallmentKey({ description: "Loja (3/6)", type: "despesa", categoryId: "c2" });
+    const d = importInstallmentKey({ description: "Loja (3/12)", type: "despesa", categoryId: "c1" });
+    expect(a?.key).toBe(b?.key);
+    expect(c?.key).not.toBe(a?.key);
+    expect(d?.key).not.toBe(a?.key);
+    expect(importInstallmentKey({ description: "Mercado", type: "despesa", categoryId: "c1" })).toBeNull();
   });
 });

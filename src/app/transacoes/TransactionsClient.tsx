@@ -14,13 +14,15 @@ import { useToast } from "@/components/ui/Toast";
 import { createTransaction, updateTransaction, deleteTransaction, deleteTransactionGroup, createCategory, deleteTransactions, updateTransactionsCategory } from "./actions";
 import { formatCurrency, formatDate, formatDateInput } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
-import { parseInstallmentDescription } from "@/lib/installments";
+import { getInstallmentInfo } from "@/lib/installments";
+import type { SerializedTransaction } from "@/lib/types";
+import type { Account, Category } from "@prisma/client";
 import ImportModal from "./ImportModal";
 
 type BaseProps = {
-  transactions: any[];
-  accounts: any[];
-  categories: any[];
+  transactions: SerializedTransaction[];
+  accounts: Account[];
+  categories: Category[];
   period: string;
 };
 
@@ -34,9 +36,9 @@ export default function TransactionsClient({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedType, setSelectedType] = useState("despesa");
-  const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<SerializedTransaction | null>(null);
+  const [, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<SerializedTransaction | null>(null);
   const toast = useToast();
 
   // Filtros
@@ -89,7 +91,7 @@ export default function TransactionsClient({
     setIsModalOpen(true);
   }
 
-  function openEditModal(t: any) {
+  function openEditModal(t: SerializedTransaction) {
     setEditingTransaction(t);
     setSelectedType(t.type);
     setIsModalOpen(true);
@@ -133,7 +135,7 @@ export default function TransactionsClient({
     });
   }
 
-  function handleDeleteClick(t: any) {
+  function handleDeleteClick(t: SerializedTransaction) {
     setDeleteTarget(t);
   }
 
@@ -258,7 +260,7 @@ export default function TransactionsClient({
         />
       ),
       className: "w-10",
-      render: (t: any) => (
+      render: (t: SerializedTransaction) => (
         <input
           type="checkbox"
           checked={selectedIds.has(t.id)}
@@ -272,7 +274,7 @@ export default function TransactionsClient({
       key: "date",
       label: "Data",
       sortable: true,
-      render: (t: any) => (
+      render: (t: SerializedTransaction) => (
         <span className="font-mono-value text-text-dim">{formatDate(t.date)}</span>
       ),
     },
@@ -280,12 +282,12 @@ export default function TransactionsClient({
       key: "description",
       label: "Descrição",
       sortable: true,
-      render: (t: any) => <span className="font-medium text-fg">{t.description}</span>,
+      render: (t: SerializedTransaction) => <span className="font-medium text-fg">{t.description}</span>,
     },
     {
       key: "category",
       label: "Categoria",
-      render: (t: any) => (
+      render: (t: SerializedTransaction) => (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: `${t.category.color}15`, color: t.category.color, border: `1px solid ${t.category.color}30` }}>
           <CategoryIcon name={t.category.name} size={12} />
           {t.category.name}
@@ -295,14 +297,14 @@ export default function TransactionsClient({
     {
       key: "account",
       label: "Conta",
-      render: (t: any) => <span className="text-text-muted">{t.account.name}</span>,
+      render: (t: SerializedTransaction) => <span className="text-text-muted">{t.account.name}</span>,
     },
     {
       key: "amount",
       label: "Valor",
       sortable: true,
       className: "text-right",
-      render: (t: any) => (
+      render: (t: SerializedTransaction) => (
         <span
           className={`font-mono-value font-medium ${
             t.type === "receita" ? "text-emerald drop-shadow-[0_0_8px_rgba(204,255,0,0.3)]" : "text-coral drop-shadow-[0_0_8px_rgba(255,0,85,0.3)]"
@@ -317,7 +319,7 @@ export default function TransactionsClient({
       key: "actions",
       label: "",
       className: "w-16 text-right",
-      render: (t: any) => (
+      render: (t: SerializedTransaction) => (
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={() => openEditModal(t)}
@@ -344,7 +346,7 @@ export default function TransactionsClient({
     },
   ];
 
-  function renderMobileItem(t: any) {
+  function renderMobileItem(t: SerializedTransaction) {
     return (
       <div className="glass-panel p-4 flex items-center gap-3">
         <input
@@ -587,7 +589,7 @@ export default function TransactionsClient({
               label="Data"
               type="date"
               required
-              defaultValue={editingTransaction ? formatDateInput(editingTransaction.date) : new Date().toISOString().split('T')[0]}
+              defaultValue={editingTransaction ? formatDateInput(editingTransaction.date) : formatDateInput(new Date())}
             />
           </div>
 
@@ -689,14 +691,14 @@ export default function TransactionsClient({
 
       {/* Confirm Dialog para exclusão */}
       {(() => {
-        const installmentInfo = deleteTarget ? parseInstallmentDescription(deleteTarget.description) : null;
+        const installmentInfo = deleteTarget ? getInstallmentInfo(deleteTarget) : null;
         return (
           <ConfirmDialog
             isOpen={deleteTarget !== null}
             onConfirm={handleDeleteConfirm}
             onCancel={handleDeleteCancel}
             onExtra={installmentInfo ? handleDeleteGroupConfirm : undefined}
-            extraLabel={installmentInfo ? `Excluir todas as ${installmentInfo.total} parcelas` : undefined}
+            extraLabel={installmentInfo ? "Excluir a compra inteira" : undefined}
             title="Excluir transação"
             message={
               installmentInfo

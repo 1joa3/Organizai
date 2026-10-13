@@ -8,19 +8,27 @@ import Modal from "@/components/ui/Modal";
 import GoalProgressBar from "@/components/charts/GoalProgressBar";
 import { createGoal, addAmountToGoal } from "./actions";
 import { formatCurrency } from "@/lib/formatters";
+import { useToast } from "@/components/ui/Toast";
+import type { SerializedGoal } from "@/lib/types";
 
-export default function GoalsClient({ goals }: { goals: any[] }) {
+export default function GoalsClient({ goals }: { goals: SerializedGoal[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [selectedGoal, setSelectedGoal] = useState<SerializedGoal | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const toast = useToast();
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
     const formData = new FormData(e.currentTarget);
-    await createGoal(formData);
+    const result = await createGoal(formData);
     setIsLoading(false);
+    if (result?.error) {
+      toast.error("Não foi possível criar a meta", result.error);
+      return;
+    }
+    toast.success("Meta criada");
     setIsModalOpen(false);
   }
 
@@ -29,8 +37,13 @@ export default function GoalsClient({ goals }: { goals: any[] }) {
     if (!selectedGoal) return;
     setIsLoading(true);
     const formData = new FormData(e.currentTarget);
-    await addAmountToGoal(selectedGoal.id, formData);
+    const result = await addAmountToGoal(selectedGoal.id, formData);
     setIsLoading(false);
+    if (result?.error) {
+      toast.error("Não foi possível registrar o aporte", result.error);
+      return;
+    }
+    toast.success("Aporte registrado");
     setIsAddModalOpen(false);
   }
 

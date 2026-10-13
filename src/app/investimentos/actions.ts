@@ -2,68 +2,54 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { firstError, formToObject, investmentSchema } from "@/lib/validation";
 
-export async function createInvestment(formData: FormData) {
-  const asset = formData.get("asset") as string;
-  const assetType = formData.get("assetType") as string;
-  const investedAmount = parseFloat(formData.get("investedAmount") as string);
-  const currentAmount = parseFloat(formData.get("currentAmount") as string);
-  const date = new Date(formData.get("date") as string);
-  const notes = (formData.get("notes") as string) || null;
-
-  if (!asset || isNaN(investedAmount) || investedAmount <= 0) {
-    return { error: "Dados inválidos" };
-  }
-
-  await prisma.investment.create({
-    data: {
-      asset,
-      assetType,
-      investedAmount,
-      currentAmount: isNaN(currentAmount) ? investedAmount : currentAmount,
-      date,
-      notes,
-    },
-  });
-
+function revalidate() {
   revalidatePath("/investimentos");
   revalidatePath("/");
+}
+
+function parseInvestment(formData: FormData) {
+  const parsed = investmentSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) } as const;
+  const { currentAmount, ...rest } = parsed.data;
+  // Sem valor atual informado, assume o valor investido
+  return { data: { ...rest, currentAmount: currentAmount ?? rest.investedAmount } } as const;
+}
+
+export async function createInvestment(formData: FormData) {
+  const result = parseInvestment(formData);
+  if ("error" in result) return { error: result.error };
+
+  await prisma.investment.create({ data: result.data });
+
+  revalidate();
   return { success: true };
 }
 
 export async function updateInvestment(id: string, formData: FormData) {
-  const asset = formData.get("asset") as string;
-  const assetType = formData.get("assetType") as string;
-  const investedAmount = parseFloat(formData.get("investedAmount") as string);
-  const currentAmount = parseFloat(formData.get("currentAmount") as string);
-  const date = new Date(formData.get("date") as string);
-  const notes = (formData.get("notes") as string) || null;
+  const result = parseInvestment(formData);
+  if ("error" in result) return { error: result.error };
 
-  if (!asset || isNaN(investedAmount) || investedAmount <= 0) {
-    return { error: "Dados inválidos" };
+  try {
+    await prisma.investment.update({ where: { id }, data: result.data });
+  } catch (error) {
+    console.error("Error updating investment:", error);
+    return { error: "Investimento não encontrado ou erro ao salvar." };
   }
 
-  await prisma.investment.update({
-    where: { id },
-    data: {
-      asset,
-      assetType,
-      investedAmount,
-      currentAmount: isNaN(currentAmount) ? investedAmount : currentAmount,
-      date,
-      notes,
-    },
-  });
-
-  revalidatePath("/investimentos");
-  revalidatePath("/");
+  revalidate();
   return { success: true };
 }
 
 export async function deleteInvestment(id: string) {
-  await prisma.investment.delete({ where: { id } });
-  revalidatePath("/investimentos");
-  revalidatePath("/");
+  try {
+    await prisma.investment.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting investment:", error);
+    return { error: "Investimento não encontrado." };
+  }
+  revalidate();
   return { success: true };
 }
 

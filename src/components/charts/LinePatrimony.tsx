@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
   Filler,
+  type ScriptableContext,
 } from "chart.js";
 import { formatCurrency } from "@/lib/formatters";
 import { useThemeColors, withAlpha } from "./useThemeColors";
@@ -52,7 +53,7 @@ export default function LinePatrimony({ data }: LinePatrimonyProps) {
         label: "Saldo Acumulado",
         data: data.map((d) => d.saldo),
         borderColor: colors.blue,
-        backgroundColor: (context: any) => {
+        backgroundColor: (context: ScriptableContext<"line">) => {
           const ctx = context.chart.ctx;
           const gradient = ctx.createLinearGradient(0, 0, 0, 300);
           gradient.addColorStop(0, withAlpha(colors.blue, 0.2));

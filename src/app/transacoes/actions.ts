@@ -1,99 +1,103 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import {
-  parseInstallmentDescription,
-  escapeRegExp,
-  splitInstallmentAmounts,
-  addMonthsClamped,
-} from "@/lib/installments";
+import { splitInstallmentAmounts, addMonthsClamped, importInstallmentKey } from "@/lib/installments";
 import type { DateRange } from "@/lib/period";
+import {
+  categorySchema,
+  firstError,
+  formToObject,
+  idListSchema,
+  importSchema,
+  transactionSchema,
+} from "@/lib/validation";
 
-export async function createTransaction(formData: FormData) {
-  const description = formData.get("description") as string;
-  const amount = parseFloat(formData.get("amount") as string);
-  const type = formData.get("type") as string;
-  const date = new Date(formData.get("date") as string);
-  const accountId = formData.get("accountId") as string;
-  const categoryId = formData.get("categoryId") as string;
-  const installmentsStr = formData.get("installments");
-  const installments = installmentsStr ? parseInt(installmentsStr as string) : 1;
-
-  if (!description || isNaN(amount) || amount <= 0) {
-    return { error: "Dados inválidos" };
-  }
-
-  if (type === "despesa" && installments > 1) {
-    const installmentAmounts = splitInstallmentAmounts(amount, installments);
-    const dataToCreate = [];
-
-    for (let i = 0; i < installments; i++) {
-      dataToCreate.push({
-        description: `${description} (${i + 1}/${installments})`,
-        amount: installmentAmounts[i],
-        type,
-        date: addMonthsClamped(date, i),
-        accountId,
-        categoryId,
-      });
-    }
-
-    await prisma.transaction.createMany({
-      data: dataToCreate,
-    });
-  } else {
-    await prisma.transaction.create({
-      data: {
-        description,
-        amount,
-        type,
-        date,
-        accountId,
-        categoryId,
-      },
-    });
-  }
-
+function revalidate() {
   revalidatePath("/transacoes");
   revalidatePath("/");
+}
+
+/** Confere se a conta e a categoria existem e se a categoria é do mesmo tipo da transação. */
+async function checkReferences(accountId: string, categoryId: string, type: string) {
+  const [account, category] = await Promise.all([
+    prisma.account.findUnique({ where: { id: accountId }, select: { id: true } }),
+    prisma.category.findUnique({ where: { id: categoryId }, select: { type: true } }),
+  ]);
+  if (!account) return "Conta não encontrada";
+  if (!category) return "Categoria não encontrada";
+  if (category.type !== type) return "A categoria não é do mesmo tipo da transação";
+  return null;
+}
+
+export async function createTransaction(formData: FormData) {
+  const parsed = transactionSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { description, amount, type, date, accountId, categoryId, installments } = parsed.data;
+
+  const refError = await checkReferences(accountId, categoryId, type);
+  if (refError) return { error: refError };
+
+  try {
+    if (type === "despesa" && installments > 1) {
+      // Todas as parcelas compartilham o mesmo grupo; a descrição leva "(n/N)" só para exibição
+      const installmentGroupId = randomUUID();
+      const installmentAmounts = splitInstallmentAmounts(amount, installments);
+      await prisma.transaction.createMany({
+        data: installmentAmounts.map((value, i) => ({
+          description: `${description} (${i + 1}/${installments})`,
+          amount: value,
+          type,
+          date: addMonthsClamped(date, i),
+          accountId,
+          categoryId,
+          installmentGroupId,
+          installmentNumber: i + 1,
+          installmentTotal: installments,
+        })),
+      });
+    } else {
+      await prisma.transaction.create({
+        data: { description, amount, type, date, accountId, categoryId },
+      });
+    }
+  } catch (error) {
+    console.error("Error creating transaction:", error);
+    return { error: "Erro interno ao salvar a transação." };
+  }
+
+  revalidate();
   return { success: true };
 }
 
 export async function updateTransaction(id: string, formData: FormData) {
-  const description = formData.get("description") as string;
-  const amount = parseFloat(formData.get("amount") as string);
-  const type = formData.get("type") as string;
-  const date = new Date(formData.get("date") as string);
-  const accountId = formData.get("accountId") as string;
-  const categoryId = formData.get("categoryId") as string;
+  const parsed = transactionSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { description, amount, type, date, accountId, categoryId } = parsed.data;
 
-  if (!description || isNaN(amount) || amount <= 0) {
-    return { error: "Dados inválidos" };
+  const refError = await checkReferences(accountId, categoryId, type);
+  if (refError) return { error: refError };
+
+  try {
+    // Os campos de parcela não mudam: editar a descrição não tira a parcela da compra
+    await prisma.transaction.update({
+      where: { id },
+      data: { description, amount, type, date, accountId, categoryId },
+    });
+  } catch (error) {
+    console.error("Error updating transaction:", error);
+    return { error: "Transação não encontrada ou erro ao salvar." };
   }
 
-  await prisma.transaction.update({
-    where: { id },
-    data: {
-      description,
-      amount,
-      type,
-      date,
-      accountId,
-      categoryId,
-    },
-  });
-
-  revalidatePath("/transacoes");
-  revalidatePath("/");
+  revalidate();
   return { success: true };
 }
 
 export async function deleteTransaction(id: string) {
   try {
     await prisma.transaction.delete({ where: { id } });
-    revalidatePath("/transacoes");
-    revalidatePath("/");
+    revalidate();
     return { success: true };
   } catch (error) {
     console.error("Error deleting transaction:", error);
@@ -101,12 +105,7 @@ export async function deleteTransaction(id: string) {
   }
 }
 
-/**
- * Exclui todas as parcelas de uma mesma compra (mesma conta + categoria +
- * nome base + total de parcelas), não só a linha clicada. Cada parcela é
- * uma transação independente no banco, então excluir "uma parcela" nunca
- * removia o resto da compra — isso resolve esse problema.
- */
+/** Exclui todas as parcelas da mesma compra (mesmo installmentGroupId), não só a linha clicada. */
 export async function deleteTransactionGroup(id: string) {
   try {
     const tx = await prisma.transaction.findUnique({ where: { id } });
@@ -114,27 +113,19 @@ export async function deleteTransactionGroup(id: string) {
       return { error: "Transação não encontrada" };
     }
 
-    const info = parseInstallmentDescription(tx.description);
-    if (!info) {
+    if (!tx.installmentGroupId) {
       // não é uma parcela — comportamento igual ao excluir normal
       await prisma.transaction.delete({ where: { id } });
-      revalidatePath("/transacoes");
-      revalidatePath("/");
+      revalidate();
       return { success: true, count: 1 };
     }
 
-    const pattern = new RegExp(`^${escapeRegExp(info.baseName)} \\(\\d+/${info.total}\\)$`);
-    const candidates = await prisma.transaction.findMany({
-      where: { accountId: tx.accountId, categoryId: tx.categoryId, type: tx.type },
-      select: { id: true, description: true },
+    const result = await prisma.transaction.deleteMany({
+      where: { installmentGroupId: tx.installmentGroupId },
     });
-    const groupIds = candidates.filter((c) => pattern.test(c.description)).map((c) => c.id);
 
-    await prisma.transaction.deleteMany({ where: { id: { in: groupIds } } });
-
-    revalidatePath("/transacoes");
-    revalidatePath("/");
-    return { success: true, count: groupIds.length };
+    revalidate();
+    return { success: true, count: result.count };
   } catch (error) {
     console.error("Error deleting transaction group:", error);
     return { error: "Erro interno ao tentar excluir o grupo de parcelas." };
@@ -182,32 +173,13 @@ export async function getCategories(type?: string) {
 }
 
 export async function createCategory(formData: FormData) {
-  const name = (formData.get("name") as string)?.trim();
-  const type = formData.get("type") as string;
-  const color = (formData.get("color") as string) || "#00E5FF";
+  const parsed = categorySchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
 
-  if (!name) {
-    return { error: "Informe um nome para a categoria" };
-  }
-  if (type !== "receita" && type !== "despesa") {
-    return { error: "Tipo de categoria inválido" };
-  }
+  const category = await prisma.category.create({ data: parsed.data });
 
-  const category = await prisma.category.create({
-    data: { name, type, color },
-  });
-
-  revalidatePath("/transacoes");
-  revalidatePath("/");
+  revalidate();
   return { success: true, category };
-}
-
-interface ImportRow {
-  date: string;
-  description: string;
-  amount: number;
-  type: string;
-  categoryId: string;
 }
 
 /**
@@ -215,29 +187,22 @@ interface ImportRow {
  * Cada linha já vem com sua própria categoria (editável por linha na
  * pré-visualização). Ignora linhas que já existem (mesma conta + data +
  * descrição + valor) para permitir reimportar um arquivo sem duplicar.
+ * Linhas "Loja (n/N)" da mesma compra ganham o mesmo grupo de parcelas —
+ * reaproveitando o grupo de uma importação anterior, se já existir.
  */
-export async function importTransactions(input: {
-  accountId: string;
-  rows: ImportRow[];
-}) {
-  const { accountId, rows } = input;
+export async function importTransactions(input: unknown) {
+  const parsed = importSchema.safeParse(input);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { accountId, rows } = parsed.data;
 
-  if (!accountId) {
-    return { error: "Selecione a conta" };
-  }
-  if (!rows || rows.length === 0) {
-    return { error: "Nenhuma linha válida para importar" };
-  }
+  const account = await prisma.account.findUnique({ where: { id: accountId }, select: { id: true } });
+  if (!account) return { error: "Conta não encontrada" };
 
-  const parsedRows = rows
-    .map((r) => ({ ...r, date: new Date(r.date) }))
-    .filter((r) => !isNaN(r.date.getTime()) && r.description && r.amount > 0 && r.categoryId);
+  const categoryIds = [...new Set(rows.map((r) => r.categoryId))];
+  const foundCategories = await prisma.category.count({ where: { id: { in: categoryIds } } });
+  if (foundCategories !== categoryIds.length) return { error: "Alguma categoria não foi encontrada" };
 
-  if (parsedRows.length === 0) {
-    return { error: "Nenhuma linha válida para importar" };
-  }
-
-  const timestamps = parsedRows.map((r) => r.date.getTime());
+  const timestamps = rows.map((r) => r.date.getTime());
   const minDate = new Date(Math.min(...timestamps));
   const maxDate = new Date(Math.max(...timestamps));
 
@@ -249,30 +214,51 @@ export async function importTransactions(input: {
     existing.map((e) => `${e.date.getTime()}|${e.description}|${Number(e.amount).toFixed(2)}`)
   );
 
-  const toCreate: {
-    description: string;
-    amount: number;
-    type: string;
-    date: Date;
-    accountId: string;
-    categoryId: string;
-  }[] = [];
+  const groupIds = new Map<string, string>();
+  async function groupIdFor(key: string, baseName: string, total: number, type: string, categoryId: string) {
+    let groupId = groupIds.get(key);
+    if (!groupId) {
+      const previous = await prisma.transaction.findFirst({
+        where: {
+          accountId,
+          type,
+          categoryId,
+          installmentTotal: total,
+          installmentGroupId: { not: null },
+          description: { startsWith: `${baseName} (` },
+        },
+        select: { installmentGroupId: true },
+      });
+      groupId = previous?.installmentGroupId ?? randomUUID();
+      groupIds.set(key, groupId);
+    }
+    return groupId;
+  }
+
+  const toCreate = [];
   let skipped = 0;
 
-  for (const row of parsedRows) {
+  for (const row of rows) {
     const key = `${row.date.getTime()}|${row.description}|${row.amount.toFixed(2)}`;
     if (existingKeys.has(key)) {
       skipped++;
       continue;
     }
     existingKeys.add(key); // evita duplicar dentro do próprio arquivo
+
+    const installment = importInstallmentKey(row);
     toCreate.push({
       description: row.description,
       amount: row.amount,
-      type: row.type === "receita" ? "receita" : "despesa",
+      type: row.type,
       date: row.date,
       accountId,
       categoryId: row.categoryId,
+      ...(installment && {
+        installmentGroupId: await groupIdFor(installment.key, installment.baseName, installment.total, row.type, row.categoryId),
+        installmentNumber: installment.current,
+        installmentTotal: installment.total,
+      }),
     });
   }
 
@@ -280,21 +266,18 @@ export async function importTransactions(input: {
     await prisma.transaction.createMany({ data: toCreate });
   }
 
-  revalidatePath("/transacoes");
-  revalidatePath("/");
+  revalidate();
   return { success: true, imported: toCreate.length, skipped };
 }
 
 /** Exclui várias transações selecionadas de uma vez (seleção múltipla na tabela). */
-export async function deleteTransactions(ids: string[]) {
-  if (!ids || ids.length === 0) {
-    return { error: "Nenhuma transação selecionada" };
-  }
+export async function deleteTransactions(ids: unknown) {
+  const parsed = idListSchema.safeParse(ids);
+  if (!parsed.success) return { error: firstError(parsed.error) };
 
   try {
-    const result = await prisma.transaction.deleteMany({ where: { id: { in: ids } } });
-    revalidatePath("/transacoes");
-    revalidatePath("/");
+    const result = await prisma.transaction.deleteMany({ where: { id: { in: parsed.data } } });
+    revalidate();
     return { success: true, count: result.count };
   } catch (error) {
     console.error("Error deleting transactions:", error);
@@ -303,21 +286,23 @@ export async function deleteTransactions(ids: string[]) {
 }
 
 /** Muda a categoria de várias transações selecionadas de uma vez. */
-export async function updateTransactionsCategory(ids: string[], categoryId: string) {
-  if (!ids || ids.length === 0) {
-    return { error: "Nenhuma transação selecionada" };
-  }
-  if (!categoryId) {
+export async function updateTransactionsCategory(ids: unknown, categoryId: unknown) {
+  const parsed = idListSchema.safeParse(ids);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  if (typeof categoryId !== "string" || !categoryId) {
     return { error: "Selecione uma categoria" };
   }
 
+  const category = await prisma.category.findUnique({ where: { id: categoryId }, select: { type: true } });
+  if (!category) return { error: "Categoria não encontrada" };
+
   try {
+    // Só muda transações do mesmo tipo da categoria (não põe "Salário" numa despesa)
     const result = await prisma.transaction.updateMany({
-      where: { id: { in: ids } },
+      where: { id: { in: parsed.data }, type: category.type },
       data: { categoryId },
     });
-    revalidatePath("/transacoes");
-    revalidatePath("/");
+    revalidate();
     return { success: true, count: result.count };
   } catch (error) {
     console.error("Error updating transactions category:", error);

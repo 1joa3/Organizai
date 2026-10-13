@@ -37,8 +37,15 @@ model Transaction {
   category    Category @relation(fields: [categoryId], references: [id])
   createdAt   DateTime @default(now())
 
+  // Parcelas: todas as parcelas de uma compra compartilham o mesmo grupo.
+  // A descrição ainda leva o sufixo "(n/N)" só para exibição.
+  installmentGroupId String?
+  installmentNumber  Int?
+  installmentTotal   Int?
+
   @@index([date])
   @@index([type])
+  @@index([installmentGroupId])
 }
 
 model Investment {

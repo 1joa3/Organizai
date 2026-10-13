@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import type { DateRange } from "./period";
+import { getInstallmentInfo } from "./installments";
 
 /** Totais de receita e despesa no período */
 export async function getPeriodTotals({ start: startDate, end: endDate }: DateRange) {
@@ -152,20 +153,19 @@ export async function getInstallmentsSummary({ start: startDate, end: endDate }:
     orderBy: { date: "asc" },
   });
 
-  const installments = transactions.filter(t => /\(\d+\/\d+\)$/.test(t.description));
+  const installments = transactions.filter((t) => getInstallmentInfo(t));
 
-  const grouped = new Map<string, { total: number; color: string; currentInstallment: number; totalInstallments: number; currentAmount: number; targetAmount: number }>();
+  const grouped = new Map<string, { name: string; total: number; color: string; currentInstallment: number; totalInstallments: number; currentAmount: number; targetAmount: number }>();
 
   installments.forEach(t => {
-    const match = t.description.match(/\((\d+)\/(\d+)\)$/);
-    let currentInst = 0;
-    let totalInst = 1;
-    if (match) {
-      currentInst = parseInt(match[1]);
-      totalInst = parseInt(match[2]);
-    }
-    const baseName = t.description.replace(/\s*\(\d+\/\d+\)$/, "").trim();
-    const existing = grouped.get(baseName) || { 
+    const info = getInstallmentInfo(t)!;
+    const currentInst = info.current;
+    const totalInst = info.total;
+    const baseName = info.baseName;
+    // Agrupa pela compra; transações antigas sem grupo caem no nome
+    const groupKey = t.installmentGroupId ?? baseName;
+    const existing = grouped.get(groupKey) || { 
+      name: baseName,
       total: 0, 
       color: t.category?.color || "#8884d8",
       currentInstallment: 0,
@@ -175,7 +175,8 @@ export async function getInstallmentsSummary({ start: startDate, end: endDate }:
     };
     
     // As assumps that there's typically 1 transaction per installment in the month
-    grouped.set(baseName, {
+    grouped.set(groupKey, {
+      name: existing.name,
       total: existing.total + Number(t.amount),
       color: existing.color,
       currentInstallment: currentInst,
@@ -185,8 +186,8 @@ export async function getInstallmentsSummary({ start: startDate, end: endDate }:
     });
   });
 
-  return Array.from(grouped.entries()).map(([name, data]) => ({
-    name,
+  return Array.from(grouped.values()).map((data) => ({
+    name: data.name,
     color: data.color,
     total: data.total,
     currentInstallment: data.currentInstallment,
@@ -209,9 +210,10 @@ export async function getDebtsSummary() {
     include: { category: true },
   });
 
-  const installments = transactions.filter((t) => /\(\d+\/\d+\)$/.test(t.description));
+  const installments = transactions.filter((t) => getInstallmentInfo(t));
 
   interface DebtGroup {
+    name: string;
     color: string;
     totalInstallments: number;
     remainingInstallments: number;
@@ -223,14 +225,15 @@ export async function getDebtsSummary() {
   const monthlyDue = new Map<string, number>();
 
   installments.forEach((t) => {
-    const match = t.description.match(/\((\d+)\/(\d+)\)$/);
-    if (!match) return;
-    const totalInst = parseInt(match[2]);
-    const baseName = t.description.replace(/\s*\(\d+\/\d+\)$/, "").trim();
+    const info = getInstallmentInfo(t)!;
+    const totalInst = info.total;
+    const baseName = info.baseName;
+    const groupKey = t.installmentGroupId ?? baseName;
     const amount = Number(t.amount);
     const isFuture = t.date >= startOfMonth;
 
-    const existing = groups.get(baseName) ?? {
+    const existing = groups.get(groupKey) ?? {
+      name: baseName,
       color: t.category?.color ?? "#8884d8",
       totalInstallments: totalInst,
       remainingInstallments: 0,
@@ -247,11 +250,10 @@ export async function getDebtsSummary() {
     }
     if (t.date > existing.payoffDate) existing.payoffDate = t.date;
 
-    groups.set(baseName, existing);
+    groups.set(groupKey, existing);
   });
 
-  const debts = Array.from(groups.entries())
-    .map(([name, data]) => ({ name, ...data }))
+  const debts = Array.from(groups.values())
     .filter((d) => d.remainingAmount > 0)
     .sort((a, b) => b.remainingAmount - a.remainingAmount);
 

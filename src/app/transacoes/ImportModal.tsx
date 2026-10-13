@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from "react";
+import { useState, useTransition, useMemo } from "react";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
@@ -27,6 +27,14 @@ interface ImportModalProps {
   categories: { id: string; name: string; type: string }[];
 }
 
+interface OverrideState {
+  rows: unknown;
+  detect: boolean;
+  values: Record<number, string>;
+}
+
+const NO_OVERRIDE_STATE: OverrideState = { rows: null, detect: false, values: {} };
+
 export default function ImportModal({ isOpen, onClose, accounts, categories }: ImportModalProps) {
   const [isPending, startTransition] = useTransition();
   const [isImporting, setIsImporting] = useState(false);
@@ -50,11 +58,12 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   const [categoryId, setCategoryId] = useState("");
   const [typeMode, setTypeMode] = useState<TypeMode>("despesa");
   const [detectInstallments, setDetectInstallments] = useState(true);
-  const [categoryOverrides, setCategoryOverrides] = useState<Record<number, string>>({});
+  // Categoria escolhida por linha, guardada junto com as linhas a que se refere
+  const [overrideState, setOverrideState] = useState<OverrideState>(NO_OVERRIDE_STATE);
 
   function reset() {
     setInputMode("csv");
-    setCategoryOverrides({});
+    setOverrideState(NO_OVERRIDE_STATE);
     setFileName(null);
     setParsed(null);
     setTruncated(false);
@@ -75,7 +84,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
 
   function switchMode(mode: InputMode) {
     setInputMode(mode);
-    setCategoryOverrides({});
+    setOverrideState(NO_OVERRIDE_STATE);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -173,11 +182,20 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   const hasRows = inputMode === "csv" ? isMapped && mappedRows.length > 0 : manualEntries.length > 0;
 
   // Linhas podem mudar de forma (expansão de parcelas, remapeamento de
-  // colunas, adição/remoção manual) — os índices de override deixam de
-  // fazer sentido, então limpa.
-  useEffect(() => {
-    setCategoryOverrides({});
-  }, [singleRows, detectInstallments]);
+  // colunas, adição/remoção manual) — aí os índices dos overrides deixam de
+  // fazer sentido e eles são ignorados.
+  const categoryOverrides =
+    overrideState.rows === singleRows && overrideState.detect === detectInstallments
+      ? overrideState.values
+      : NO_OVERRIDE_STATE.values;
+
+  function setCategoryOverride(index: number, value: string) {
+    setOverrideState({
+      rows: singleRows,
+      detect: detectInstallments,
+      values: { ...categoryOverrides, [index]: value },
+    });
+  }
 
   const filteredCategories = categories.filter((c) =>
     typeMode === "signal" ? true : c.type === typeMode
@@ -202,7 +220,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
       .map((r, i) => ({ ...r, categoryId: getRowCategoryId(i) }))
       .filter((r) => r.valid)
       .map((r) => ({
-        date: r.date!.toISOString(),
+        date: formatDateInput(r.date!),
         description: r.description,
         amount: r.amount!,
         type: r.type,
@@ -407,7 +425,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
             onChange={(e) => setDetectInstallments(e.target.checked)}
             className="w-3.5 h-3.5 accent-blue cursor-pointer"
           />
-          Detectar compra parcelada (ex: "Loja - Parcela 2/6") e gerar as parcelas futuras automaticamente
+          Detectar compra parcelada (ex: &ldquo;Loja - Parcela 2/6&rdquo;) e gerar as parcelas futuras automaticamente
         </label>
 
         {hasRows && (
@@ -430,7 +448,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                           <select
                             value={getRowCategoryId(i)}
                             onChange={(e) =>
-                              setCategoryOverrides((prev) => ({ ...prev, [i]: e.target.value }))
+                              setCategoryOverride(i, e.target.value)
                             }
                             className="w-full max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
                           >

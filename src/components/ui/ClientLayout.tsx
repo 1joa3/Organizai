@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar, { MobileBottomNav } from "./Sidebar";
 import { ToastProvider } from "./Toast";
 import { saveSidebarCookie } from "@/lib/sidebar";
@@ -13,10 +14,16 @@ export default function ClientLayout({
   initialSidebarExpanded?: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(initialSidebarExpanded);
+  const pathname = usePathname();
 
   function toggleSidebar() {
     saveSidebarCookie(!isExpanded);
     setIsExpanded(!isExpanded);
+  }
+
+  // A tela de login fica sem menu: não há o que navegar antes de entrar
+  if (pathname === "/login") {
+    return <ToastProvider>{children}</ToastProvider>;
   }
 
   return (

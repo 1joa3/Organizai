@@ -7,25 +7,32 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import { createInvestment } from "./actions";
-import { formatCurrency, formatReturn } from "@/lib/formatters";
+import { formatCurrency, formatDateInput, formatReturn } from "@/lib/formatters";
+import { useToast } from "@/components/ui/Toast";
+import type { SerializedInvestment } from "@/lib/types";
 
-export default function InvestmentsClient({ investments }: { investments: any[] }) {
+export default function InvestmentsClient({ investments }: { investments: SerializedInvestment[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const toast = useToast();
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
     const formData = new FormData(e.currentTarget);
-    await createInvestment(formData);
+    const result = await createInvestment(formData);
     setIsLoading(false);
+    if (result?.error) {
+      toast.error("Não foi possível salvar o aporte", result.error);
+      return;
+    }
+    toast.success("Aporte registrado");
     setIsModalOpen(false);
   }
 
   // Agrupar por tipo
-  const grouped = investments.reduce((acc: any, inv: any) => {
-    if (!acc[inv.assetType]) acc[inv.assetType] = [];
-    acc[inv.assetType].push(inv);
+  const grouped = investments.reduce<Record<string, SerializedInvestment[]>>((acc, inv) => {
+    (acc[inv.assetType] ??= []).push(inv);
     return acc;
   }, {});
 
@@ -68,7 +75,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
               {typeLabels[type]}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {items.map((inv: any) => {
+              {items.map((inv) => {
                 const invested = Number(inv.investedAmount);
                 const current = Number(inv.currentAmount);
                 const rentabilidade = ((current - invested) / invested) * 100;
@@ -141,7 +148,7 @@ export default function InvestmentsClient({ investments }: { investments: any[] 
             <Input name="currentAmount" label="Valor Atual" type="number" step="0.01" required />
           </div>
 
-          <Input name="date" label="Data do Aporte" type="date" required defaultValue={new Date().toISOString().split('T')[0]} />
+          <Input name="date" label="Data do Aporte" type="date" required defaultValue={formatDateInput(new Date())} />
 
           <div className="pt-4 border-t border-fg/10 flex justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
