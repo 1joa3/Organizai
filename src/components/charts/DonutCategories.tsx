@@ -100,7 +100,7 @@ export default function DonutCategories({ data }: DonutCategoriesProps) {
   const hiddenCount = data.length - visible.length;
 
   return (
-    <div className="flex flex-col xl:flex-row items-center gap-8 h-full">
+    <div className="flex flex-col @sm:flex-row items-center gap-8 h-full">
       <div className="w-48 h-48 relative shrink-0">
         <Doughnut data={chartData} options={options} />
         {/* Centro do donut */}

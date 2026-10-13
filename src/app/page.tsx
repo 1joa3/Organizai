@@ -10,6 +10,7 @@ import {
 } from "@/lib/aggregations";
 import DashboardClient from "./DashboardClient";
 import { cookies } from "next/headers";
+import { DASHBOARD_LAYOUT_COOKIE, parseLayout } from "@/lib/dashboardLayout";
 import { PERIOD_COOKIE, resolvePeriod, periodRange, periodLabel, formatPeriod } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +83,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       debtsSummary={serializedDebtsSummary}
       periodLabel={periodLabel(period)}
       period={formatPeriod(period)}
+      layout={parseLayout(cookieStore.get(DASHBOARD_LAYOUT_COOKIE)?.value)}
     />
   );
 }
