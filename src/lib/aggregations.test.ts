@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { prisma } from "./prisma";
+import { periodRange } from "./period";
 import {
-  getMonthlyTotals,
+  getPeriodTotals,
   getExpensesByCategory,
   getInstallmentsSummary,
   getInvestmentTotals,
@@ -10,6 +11,7 @@ import {
 
 const YEAR = 2024;
 const MONTH = 3; // março/2024
+const monthRange = periodRange({ kind: "month", year: YEAR, month: MONTH });
 
 let accountId: string;
 let categoryDespesaId: string;
@@ -45,7 +47,7 @@ beforeEach(async () => {
   await prisma.investment.deleteMany();
 });
 
-describe("getMonthlyTotals", () => {
+describe("getPeriodTotals", () => {
   it("soma receitas e despesas apenas do mês/ano informado", async () => {
     await prisma.transaction.createMany({
       data: [
@@ -77,7 +79,7 @@ describe("getMonthlyTotals", () => {
       ],
     });
 
-    const totals = await getMonthlyTotals(YEAR, MONTH);
+    const totals = await getPeriodTotals(monthRange);
 
     expect(totals.receitas).toBe(5000);
     expect(totals.despesas).toBe(300);
@@ -85,7 +87,7 @@ describe("getMonthlyTotals", () => {
   });
 
   it("retorna zeros quando não há transações no período", async () => {
-    const totals = await getMonthlyTotals(YEAR, MONTH);
+    const totals = await getPeriodTotals(monthRange);
     expect(totals).toEqual({ receitas: 0, despesas: 0, saldo: 0 });
   });
 });
@@ -117,7 +119,7 @@ describe("getExpensesByCategory", () => {
       ],
     });
 
-    const result = await getExpensesByCategory(YEAR, MONTH);
+    const result = await getExpensesByCategory(monthRange);
 
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ name: "Moradia", total: 1500 });
@@ -141,7 +143,7 @@ describe("getInstallmentsSummary", () => {
       },
     });
 
-    const result = await getInstallmentsSummary(YEAR, MONTH);
+    const result = await getInstallmentsSummary(monthRange);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -165,7 +167,7 @@ describe("getInstallmentsSummary", () => {
       },
     });
 
-    const result = await getInstallmentsSummary(YEAR, MONTH);
+    const result = await getInstallmentsSummary(monthRange);
     expect(result).toHaveLength(0);
   });
 });

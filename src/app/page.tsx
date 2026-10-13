@@ -1,5 +1,5 @@
 import {
-  getMonthlyTotals,
+  getPeriodTotals,
   getExpensesByCategory,
   getInvestmentTotals,
   getPatrimonyEvolution,
@@ -10,21 +10,19 @@ import {
 } from "@/lib/aggregations";
 import DashboardClient from "./DashboardClient";
 import { cookies } from "next/headers";
-import { PERIOD_COOKIE, parsePeriodCookie } from "@/lib/periodCookie";
+import { PERIOD_COOKIE, resolvePeriod, periodRange, periodLabel, formatPeriod } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: Promise<{ month?: string; year?: string }>;
+  searchParams: Promise<{ period?: string; month?: string; year?: string }>;
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const cookieStore = await cookies();
-  const savedPeriod = parsePeriodCookie(cookieStore.get(PERIOD_COOKIE)?.value);
-  const now = new Date();
-  const year = params.year ? Number(params.year) : savedPeriod?.year ?? now.getFullYear();
-  const month = params.month ? Number(params.month) : savedPeriod?.month ?? now.getMonth() + 1;
+  const period = resolvePeriod(params, cookieStore.get(PERIOD_COOKIE)?.value);
+  const range = periodRange(period);
 
   const [
     monthlyTotals,
@@ -36,13 +34,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     installmentsSummary,
     debtsSummary,
   ] = await Promise.all([
-    getMonthlyTotals(year, month),
-    getExpensesByCategory(year, month),
+    getPeriodTotals(range),
+    getExpensesByCategory(range),
     getInvestmentTotals(),
     getPatrimonyEvolution(),
     getRecentTransactions(5),
     getGoalsSummary(),
-    getInstallmentsSummary(year, month),
+    getInstallmentsSummary(range),
     getDebtsSummary(),
   ]);
 
@@ -82,9 +80,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       goals={serializedGoals}
       installmentsSummary={installmentsSummary}
       debtsSummary={serializedDebtsSummary}
-      currentMonth={new Date(year, month - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-      month={month}
-      year={year}
+      periodLabel={periodLabel(period)}
+      period={formatPeriod(period)}
     />
   );
 }

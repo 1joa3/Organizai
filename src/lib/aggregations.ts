@@ -1,9 +1,8 @@
 import { prisma } from "./prisma";
+import type { DateRange } from "./period";
 
-/** Totais de receita e despesa do mês corrente */
-export async function getMonthlyTotals(year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+/** Totais de receita e despesa no período */
+export async function getPeriodTotals({ start: startDate, end: endDate }: DateRange) {
 
   const [receitas, despesas] = await Promise.all([
     prisma.transaction.aggregate({
@@ -32,10 +31,8 @@ export async function getMonthlyTotals(year: number, month: number) {
   };
 }
 
-/** Despesas agrupadas por categoria no mês */
-export async function getExpensesByCategory(year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+/** Despesas agrupadas por categoria no período */
+export async function getExpensesByCategory({ start: startDate, end: endDate }: DateRange) {
 
   const result = await prisma.transaction.groupBy({
     by: ["categoryId"],
@@ -140,9 +137,7 @@ export async function getGoalsSummary() {
 }
 
 /** Despesas parceladas agrupadas por descrição base no mês */
-export async function getInstallmentsSummary(year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+export async function getInstallmentsSummary({ start: startDate, end: endDate }: DateRange) {
 
   const transactions = await prisma.transaction.findMany({
     where: {
@@ -151,7 +146,10 @@ export async function getInstallmentsSummary(year: number, month: number) {
     },
     include: {
       category: true,
-    }
+    },
+    // Em períodos de vários meses a mesma compra aparece mais de uma vez;
+    // em ordem de data, a parcela "atual" fica sendo a mais recente
+    orderBy: { date: "asc" },
   });
 
   const installments = transactions.filter(t => /\(\d+\/\d+\)$/.test(t.description));

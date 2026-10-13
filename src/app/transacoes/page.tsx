@@ -1,24 +1,21 @@
 import { getTransactions, getAccounts, getCategories } from "./actions";
 import TransactionsClient from "./TransactionsClient";
 import { cookies } from "next/headers";
-import { PERIOD_COOKIE, parsePeriodCookie } from "@/lib/periodCookie";
+import { PERIOD_COOKIE, resolvePeriod, periodRange, formatPeriod } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: Promise<{ month?: string; year?: string }>;
+  searchParams: Promise<{ period?: string; month?: string; year?: string }>;
 }
 
 export default async function TransacoesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const cookieStore = await cookies();
-  const savedPeriod = parsePeriodCookie(cookieStore.get(PERIOD_COOKIE)?.value);
-  const now = new Date();
-  const month = params.month ? Number(params.month) : savedPeriod?.month ?? now.getMonth() + 1;
-  const year = params.year ? Number(params.year) : savedPeriod?.year ?? now.getFullYear();
+  const period = resolvePeriod(params, cookieStore.get(PERIOD_COOKIE)?.value);
 
   const [transactions, accounts, categories] = await Promise.all([
-    getTransactions({ month, year }),
+    getTransactions({ range: periodRange(period) }),
     getAccounts(),
     getCategories(),
   ]);
@@ -36,8 +33,7 @@ export default async function TransacoesPage({ searchParams }: PageProps) {
       transactions={serializedTransactions}
       accounts={accounts}
       categories={categories}
-      month={month}
-      year={year}
+      period={formatPeriod(period)}
     />
   );
 }

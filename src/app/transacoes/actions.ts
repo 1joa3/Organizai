@@ -8,6 +8,7 @@ import {
   splitInstallmentAmounts,
   addMonthsClamped,
 } from "@/lib/installments";
+import type { DateRange } from "@/lib/period";
 
 export async function createTransaction(formData: FormData) {
   const description = formData.get("description") as string;
@@ -141,17 +142,14 @@ export async function deleteTransactionGroup(id: string) {
 }
 
 export async function getTransactions(filters?: {
-  month?: number;
-  year?: number;
+  range?: DateRange;
   categoryId?: string;
   type?: string;
 }) {
   const where: Record<string, unknown> = {};
 
-  if (filters?.month && filters?.year) {
-    const startDate = new Date(filters.year, filters.month - 1, 1);
-    const endDate = new Date(filters.year, filters.month, 1);
-    where.date = { gte: startDate, lt: endDate };
+  if (filters?.range) {
+    where.date = { gte: filters.range.start, lt: filters.range.end };
   }
 
   if (filters?.categoryId) {

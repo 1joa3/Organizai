@@ -41,9 +41,8 @@ interface Props {
     monthsToPayoff: number;
     timeline: { label: string; remaining: number }[];
   };
-  currentMonth: string;
-  month: number;
-  year: number;
+  periodLabel: string;
+  period: string;
 }
 
 export default function DashboardClient({
@@ -55,9 +54,8 @@ export default function DashboardClient({
   goals,
   installmentsSummary,
   debtsSummary,
-  currentMonth,
-  month,
-  year,
+  periodLabel,
+  period,
 }: Props) {
   return (
     <div className="space-y-8">
@@ -69,9 +67,9 @@ export default function DashboardClient({
       >
         <div className="flex items-baseline gap-4">
           <h1 className="font-display text-4xl text-fg tracking-tight">Dashboard</h1>
-          <p className="text-sm text-blue uppercase tracking-widest font-medium">{currentMonth}</p>
+          <p className="text-sm text-blue uppercase tracking-widest font-medium">{periodLabel}</p>
         </div>
-        <PeriodSelector month={month} year={year} />
+        <PeriodSelector period={period} />
       </motion.div>
 
       {/* KPI Strip */}

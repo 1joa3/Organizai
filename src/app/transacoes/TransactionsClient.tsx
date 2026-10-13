@@ -21,16 +21,14 @@ type BaseProps = {
   transactions: any[];
   accounts: any[];
   categories: any[];
-  month: number;
-  year: number;
+  period: string;
 };
 
 export default function TransactionsClient({
   transactions,
   accounts,
   categories,
-  month,
-  year,
+  period,
 }: BaseProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -433,7 +431,7 @@ export default function TransactionsClient({
         className="flex flex-wrap gap-4 items-center justify-between"
       >
         <div className="flex flex-wrap gap-4 items-center">
-          <PeriodSelector month={month} year={year} />
+          <PeriodSelector period={period} />
           <div className="w-48">
             <Select
               options={[
