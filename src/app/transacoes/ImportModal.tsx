@@ -325,9 +325,9 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Select label="Coluna Data" placeholder="Selecione" value={dateCol >= 0 ? String(dateCol) : ""} onChange={(e) => setDateCol(Number(e.target.value))} options={columnOptions} />
-                <Select label="Coluna Descrição" placeholder="Selecione" value={descCol >= 0 ? String(descCol) : ""} onChange={(e) => setDescCol(Number(e.target.value))} options={columnOptions} />
-                <Select label="Coluna Valor" placeholder="Selecione" value={amountCol >= 0 ? String(amountCol) : ""} onChange={(e) => setAmountCol(Number(e.target.value))} options={columnOptions} />
+                <Select label="Coluna Data" placeholder="Selecione" value={dateCol >= 0 ? String(dateCol) : ""} onChange={(v) => setDateCol(Number(v))} options={columnOptions} />
+                <Select label="Coluna Descrição" placeholder="Selecione" value={descCol >= 0 ? String(descCol) : ""} onChange={(v) => setDescCol(Number(v))} options={columnOptions} />
+                <Select label="Coluna Valor" placeholder="Selecione" value={amountCol >= 0 ? String(amountCol) : ""} onChange={(v) => setAmountCol(Number(v))} options={columnOptions} />
               </div>
             </>
           )
@@ -383,14 +383,14 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
           <Select
             label="Conta"
             value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
+            onChange={setAccountId}
             options={accounts.map((a) => ({ value: a.id, label: a.name }))}
           />
           <Select
             label="Tipo"
             value={typeMode}
-            onChange={(e) => {
-              setTypeMode(e.target.value as TypeMode);
+            onChange={(v) => {
+              setTypeMode(v as TypeMode);
               setCategoryId("");
             }}
             options={
@@ -410,7 +410,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
             label="Categoria padrão"
             placeholder="Selecione"
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={setCategoryId}
             options={filteredCategories.map((c) => ({ value: c.id, label: c.name }))}
           />
         </div>
@@ -445,19 +445,15 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                       <td className="px-3 py-2 text-fg truncate max-w-[160px]">{r.description || "—"}</td>
                       <td className="px-2 py-2">
                         {r.valid ? (
-                          <select
-                            value={getRowCategoryId(i)}
-                            onChange={(e) =>
-                              setCategoryOverride(i, e.target.value)
-                            }
-                            className="w-full max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
-                          >
-                            {filteredCategories.map((c) => (
-                              <option key={c.id} value={c.id} className="bg-option">
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="max-w-[140px]">
+                            <Select
+                              size="sm"
+                              aria-label="Categoria da linha"
+                              value={getRowCategoryId(i)}
+                              onChange={(v) => setCategoryOverride(i, v)}
+                              options={filteredCategories.map((c) => ({ value: c.id, label: c.name }))}
+                            />
+                          </div>
                         ) : (
                           <span className="text-text-muted">—</span>
                         )}

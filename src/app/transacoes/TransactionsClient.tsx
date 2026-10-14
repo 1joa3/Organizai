@@ -442,8 +442,8 @@ export default function TransactionsClient({
                 { value: "despesa", label: "Despesas" },
               ]}
               value={filterType}
-              onChange={(e) => {
-                setFilterType(e.target.value);
+              onChange={(v) => {
+                setFilterType(v);
                 clearSelection();
               }}
             />
@@ -481,16 +481,15 @@ export default function TransactionsClient({
           <div className="flex-1 flex flex-wrap items-center gap-2">
             {canBulkRecategorize ? (
               <>
-                <select
-                  value={bulkCategoryId}
-                  onChange={(e) => setBulkCategoryId(e.target.value)}
-                  className="bg-fg/5 border border-fg/10 rounded-lg px-2.5 py-1.5 text-xs text-fg focus:border-blue focus:outline-none cursor-pointer"
-                >
-                  <option value="" className="bg-option">Mudar categoria para...</option>
-                  {bulkCategoryOptions.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-option">{c.name}</option>
-                  ))}
-                </select>
+                <div className="w-52">
+                  <Select
+                    size="sm"
+                    placeholder="Mudar categoria para..."
+                    value={bulkCategoryId}
+                    onChange={setBulkCategoryId}
+                    options={bulkCategoryOptions.map((c) => ({ value: c.id, label: c.name }))}
+                  />
+                </div>
                 <Button
                   variant="glass"
                   size="sm"
