@@ -145,6 +145,22 @@ export function periodLabel(period: Period): string {
   }
 }
 
+/** Versão curta para telas estreitas: "out/2026", "Últ. 3 meses", "2026", "05/10 – 14/10". */
+export function periodShortLabel(period: Period): string {
+  switch (period.kind) {
+    case "month":
+      return `${MONTH_NAMES[period.month - 1].slice(0, 3).toLowerCase()}/${period.year}`;
+    case "last":
+      return `Últ. ${period.months} meses`;
+    case "year":
+      return String(period.year);
+    case "custom": {
+      const short = (d: Date) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+      return `${short(parseISODate(period.from)!)} – ${short(parseISODate(period.to)!)}`;
+    }
+  }
+}
+
 /**
  * Período vizinho para as setas ‹ ›: mês anterior/seguinte ou ano
  * anterior/seguinte. Períodos relativos e personalizados não têm vizinho.

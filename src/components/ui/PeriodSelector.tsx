@@ -12,6 +12,7 @@ import {
   parsePeriod,
   periodLabel,
   periodRange,
+  periodShortLabel,
   savePeriodCookie,
   shiftPeriod,
   toISODate,
@@ -114,13 +115,14 @@ export default function PeriodSelector({ period: periodValue }: PeriodSelectorPr
 
   return (
     <div ref={rootRef} className="relative">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Numa linha só: em telas estreitas o botão do meio encolhe e corta o texto */}
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => prev && navigate(prev)}
           disabled={!prev || isPending}
           aria-label={period.kind === "year" ? "Ano anterior" : "Mês anterior"}
-          className={`${controlClass} w-11`}
+          className={`${controlClass} w-11 shrink-0`}
         >
           {ChevronLeft}
         </button>
@@ -130,10 +132,13 @@ export default function PeriodSelector({ period: periodValue }: PeriodSelectorPr
           onClick={() => (open ? setOpen(false) : openPopover())}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className={`${controlClass} gap-2.5 px-4 min-w-[200px] text-sm font-medium ${isPending ? "opacity-60" : ""}`}
+          className={`${controlClass} gap-2.5 px-4 min-w-0 flex-1 sm:flex-none sm:min-w-[200px] text-sm font-medium ${isPending ? "opacity-60" : ""}`}
         >
-          <span className="text-text-dim">{CalendarIcon}</span>
-          <span className="flex-1 text-left whitespace-nowrap">{periodLabel(period)}</span>
+          <span className="hidden sm:block text-text-dim">{CalendarIcon}</span>
+          <span className="flex-1 text-left whitespace-nowrap truncate">
+            <span className="sm:hidden">{periodShortLabel(period)}</span>
+            <span className="hidden sm:inline">{periodLabel(period)}</span>
+          </span>
           <svg width="12" height="8" viewBox="0 0 12 8" fill="none" className={`text-text-dim transition-transform ${open ? "rotate-180" : ""}`}>
             <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -144,7 +149,7 @@ export default function PeriodSelector({ period: periodValue }: PeriodSelectorPr
           onClick={() => next && navigate(next)}
           disabled={!next || isPending}
           aria-label={period.kind === "year" ? "Próximo ano" : "Próximo mês"}
-          className={`${controlClass} w-11`}
+          className={`${controlClass} w-11 shrink-0`}
         >
           {ChevronRight}
         </button>

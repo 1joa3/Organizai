@@ -5,6 +5,7 @@ import {
   resolvePeriod,
   periodRange,
   periodLabel,
+  periodShortLabel,
   shiftPeriod,
   previousRange,
   type Period,
@@ -89,6 +90,18 @@ describe("periodLabel", () => {
     expect(periodLabel({ kind: "last", months: 6 })).toBe("Últimos 6 meses");
     expect(periodLabel({ kind: "year", year: 2026 })).toBe("Ano de 2026");
     expect(periodLabel({ kind: "custom", from: "2026-07-01", to: "2026-10-13" })).toBe("01/07/2026 – 13/10/2026");
+  });
+});
+
+describe("periodShortLabel", () => {
+  it.each<[Period, string]>([
+    [{ kind: "month", year: 2026, month: 10 }, "out/2026"],
+    [{ kind: "month", year: 2026, month: 3 }, "mar/2026"],
+    [{ kind: "last", months: 6 }, "Últ. 6 meses"],
+    [{ kind: "year", year: 2025 }, "2025"],
+    [{ kind: "custom", from: "2026-10-05", to: "2026-10-14" }, "05/10 – 14/10"],
+  ])("%j → %s", (period, label) => {
+    expect(periodShortLabel(period)).toBe(label);
   });
 });
 
