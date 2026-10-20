@@ -107,15 +107,17 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
   const hiddenCount = data.length - visible.length;
 
   return (
-    <div className="flex flex-col @sm:flex-row items-center gap-8 h-full">
-      <div className="w-48 h-48 relative shrink-0">
+    // Lado a lado só quando sobra espaço para a legenda (bloco ≥ 32rem);
+    // abaixo disso a legenda vai para baixo do donut, na largura toda
+    <div className="flex flex-col @lg:flex-row items-center @lg:items-stretch gap-6 h-full">
+      <div className="w-44 h-44 relative shrink-0 @lg:self-center">
         <Doughnut data={chartData} options={options} />
         {/* Centro do donut */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium mb-1">
             {hiddenCount > 0 ? "Selecionado" : "Total"}
           </span>
-          <span className="font-mono-value text-lg text-fg drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+          <span className="font-mono-value text-base text-fg drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
             {formatCurrency(total)}
           </span>
           {hiddenCount === 0 && totalChange !== undefined && (
@@ -143,33 +145,33 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
             </button>
           )}
         </div>
-        <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+        <div className="flex flex-col gap-0.5 max-h-56 overflow-y-auto">
           {data.map((d) => {
             const isHidden = hidden.has(d.name);
             const percentage = !isHidden && total > 0 ? `${((d.total / total) * 100).toFixed(1)}%` : "—";
             return (
-              <div key={d.name} className="relative">
+              <div key={d.name} className="flex items-center gap-1 min-w-0">
                 <button
                   type="button"
                   onClick={() => toggle(d.name)}
                   aria-pressed={!isHidden}
                   title={isHidden ? `Mostrar ${d.name}` : `Esconder ${d.name}`}
-                  className={`group w-full text-left px-1.5 py-1.5 rounded-lg transition-all duration-300 cursor-pointer hover:bg-fg/5 ${
+                  className={`group flex-1 min-w-0 flex items-center gap-2.5 text-left px-1.5 py-1.5 rounded-lg transition-all duration-300 cursor-pointer hover:bg-fg/5 ${
                     isHidden ? "opacity-45" : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all duration-300"
-                        style={
-                          isHidden
-                            ? { border: "1px dashed var(--text-muted)", color: "var(--text-muted)" }
-                            : { backgroundColor: `${d.color}15`, border: `1px solid ${d.color}30`, color: d.color }
-                        }
-                      >
-                        <CategoryIcon name={d.name} size={11} />
-                      </span>
+                  <span
+                    className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all duration-300"
+                    style={
+                      isHidden
+                        ? { border: "1px dashed var(--text-muted)", color: "var(--text-muted)" }
+                        : { backgroundColor: `${d.color}15`, border: `1px solid ${d.color}30`, color: d.color }
+                    }
+                  >
+                    <CategoryIcon name={d.name} size={12} />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-baseline justify-between gap-2">
                       <span
                         className={`text-sm font-medium truncate transition-colors ${
                           isHidden ? "text-text-muted line-through" : "text-text-dim group-hover:text-fg"
@@ -177,14 +179,14 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
                       >
                         {d.name}
                       </span>
-                    </div>
-                    <span className="font-mono-value text-[10px] text-text-muted shrink-0">{percentage}</span>
-                  </div>
-                  <span className="flex items-center gap-2 mt-0.5 pl-7">
-                    <span className={`font-mono-value text-sm transition-colors ${isHidden ? "text-text-muted" : "text-fg"}`}>
-                      {formatCurrency(d.total)}
+                      <span className={`font-mono-value text-sm shrink-0 transition-colors ${isHidden ? "text-text-muted" : "text-fg"}`}>
+                        {formatCurrency(d.total)}
+                      </span>
                     </span>
-                    {!isHidden && d.change !== undefined && <ChangeBadge change={d.change} />}
+                    <span className="flex items-center justify-between gap-2 mt-0.5">
+                      <span className="font-mono-value text-[10px] text-text-muted">{percentage}</span>
+                      {!isHidden && d.change !== undefined && <ChangeBadge change={d.change} />}
+                    </span>
                   </span>
                 </button>
                 {onDetails && (
@@ -193,9 +195,11 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
                     onClick={() => onDetails(d.name)}
                     aria-label={`Ver despesas de ${d.name}`}
                     title={`Ver despesas de ${d.name}`}
-                    className="absolute right-1 bottom-1.5 px-1.5 py-0.5 rounded-md text-[11px] font-medium text-text-muted hover:text-blue hover:bg-blue/10 transition-colors cursor-pointer"
+                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-text-muted hover:text-blue hover:bg-blue/10 transition-colors cursor-pointer"
                   >
-                    Detalhes ›
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
                   </button>
                 )}
               </div>
