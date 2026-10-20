@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
-import type { DateRange } from "./period";
+import { previousRange, type DateRange } from "./period";
 import { getInstallmentInfo } from "./installments";
+import { summarizeByCategory, buildMonthlyTrend, monthsSpanned } from "./categoryBreakdown";
 
 /** Totais de receita e despesa no período */
 export async function getPeriodTotals(userId: string, { start: startDate, end: endDate }: DateRange) {
@@ -300,5 +301,45 @@ export async function getDebtsSummary(userId: string) {
     payoffDate,
     monthsToPayoff,
     timeline,
+  };
+}
+
+/**
+ * Relatório da página de categorias: cada categoria no período comparada ao
+ * período anterior, a evolução mês a mês (6 a 12 meses, terminando no mês
+ * final do período) e as despesas do período para o detalhe de cada uma.
+ */
+export async function getCategoryReport(userId: string, range: DateRange) {
+  const previous = previousRange(range);
+  const lastMonth = new Date(range.end.getFullYear(), range.end.getMonth(), range.end.getDate() - 1);
+  const trendMonths = Math.min(12, Math.max(6, monthsSpanned(range.start, range.end)));
+  const trendStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth() - (trendMonths - 1), 1);
+  const trendEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 1);
+
+  // Uma consulta só, cobrindo o período, o anterior e a janela da evolução
+  const from = [range.start, previous.start, trendStart].reduce((a, b) => (a < b ? a : b));
+  const to = range.end > trendEnd ? range.end : trendEnd;
+
+  const rows = await prisma.transaction.findMany({
+    where: { userId, type: "despesa", date: { gte: from, lt: to } },
+    include: {
+      category: { select: { name: true, color: true } },
+      account: { select: { name: true } },
+    },
+    orderBy: { date: "desc" },
+  });
+
+  const expenses = rows.map((t) => ({ ...t, amount: Number(t.amount) }));
+  const inRange = (r: DateRange) => expenses.filter((t) => t.date >= r.start && t.date < r.end);
+  const current = inRange(range);
+  const before = inRange(previous);
+
+  return {
+    total: current.reduce((sum, t) => sum + t.amount, 0),
+    previousTotal: before.reduce((sum, t) => sum + t.amount, 0),
+    days: Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000),
+    categories: summarizeByCategory(current, before),
+    trend: buildMonthlyTrend(inRange({ start: trendStart, end: trendEnd }), lastMonth, trendMonths),
+    transactions: current,
   };
 }

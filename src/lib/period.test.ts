@@ -6,6 +6,7 @@ import {
   periodRange,
   periodLabel,
   shiftPeriod,
+  previousRange,
   type Period,
 } from "./period";
 
@@ -104,5 +105,27 @@ describe("shiftPeriod", () => {
   it("períodos relativos e personalizados não têm vizinho", () => {
     expect(shiftPeriod({ kind: "last", months: 3 }, 1)).toBeNull();
     expect(shiftPeriod({ kind: "custom", from: "2026-07-01", to: "2026-10-13" }, 1)).toBeNull();
+  });
+});
+
+describe("previousRange", () => {
+  it("mês → mês anterior", () => {
+    const prev = previousRange(periodRange({ kind: "month", year: 2026, month: 1 }));
+    expect(prev).toEqual({ start: new Date(2025, 11, 1), end: new Date(2026, 0, 1) });
+  });
+
+  it("últimos 3 meses → os 3 meses antes deles", () => {
+    const prev = previousRange(periodRange({ kind: "last", months: 3 }, NOW));
+    expect(prev).toEqual({ start: new Date(2026, 4, 1), end: new Date(2026, 7, 1) });
+  });
+
+  it("ano → ano anterior", () => {
+    const prev = previousRange(periodRange({ kind: "year", year: 2026 }));
+    expect(prev).toEqual({ start: new Date(2025, 0, 1), end: new Date(2026, 0, 1) });
+  });
+
+  it("intervalo personalizado → mesmo número de dias antes", () => {
+    const prev = previousRange(periodRange({ kind: "custom", from: "2026-10-05", to: "2026-10-14" }));
+    expect(prev).toEqual({ start: new Date(2026, 8, 25), end: new Date(2026, 9, 5) });
   });
 });

@@ -170,3 +170,17 @@ export function savePeriodCookie(period: Period) {
 export function isSamePeriod(a: Period, b: Period): boolean {
   return formatPeriod(a) === formatPeriod(b);
 }
+
+/**
+ * Intervalo imediatamente anterior, do mesmo tamanho, para comparar
+ * (outubro → setembro, últimos 3 meses → os 3 antes deles). Intervalos que
+ * começam e terminam no dia 1 andam em meses; os demais, em dias.
+ */
+export function previousRange({ start, end }: DateRange): DateRange {
+  if (start.getDate() === 1 && end.getDate() === 1) {
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
+    return { start: new Date(start.getFullYear(), start.getMonth() - months, 1), end: start };
+  }
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  return { start: new Date(start.getFullYear(), start.getMonth(), start.getDate() - days), end: start };
+}
