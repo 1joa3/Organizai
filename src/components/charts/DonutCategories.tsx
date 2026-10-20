@@ -9,6 +9,7 @@ import {
   Legend,
 } from "chart.js";
 import CategoryIcon from "@/components/ui/CategoryIcon";
+import ChangeBadge from "@/components/ui/ChangeBadge";
 import { formatCurrency } from "@/lib/formatters";
 import { useThemeColors } from "./useThemeColors";
 
@@ -18,13 +19,19 @@ interface CategoryData {
   name: string;
   color: string;
   total: number;
+  /** Variação contra o período anterior; ausente = não mostra */
+  change?: number | null;
 }
 
 interface DonutCategoriesProps {
   data: CategoryData[];
+  /** Variação do total contra o período anterior, mostrada no centro */
+  totalChange?: number | null;
+  /** Se passado, cada categoria ganha um botão para abrir o detalhe */
+  onDetails?: (name: string) => void;
 }
 
-export default function DonutCategories({ data }: DonutCategoriesProps) {
+export default function DonutCategories({ data, totalChange, onDetails }: DonutCategoriesProps) {
   const colors = useThemeColors();
   // Categorias escondidas pela legenda, por nome: continuam escondidas ao trocar de período
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -111,6 +118,12 @@ export default function DonutCategories({ data }: DonutCategoriesProps) {
           <span className="font-mono-value text-lg text-fg drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
             {formatCurrency(total)}
           </span>
+          {hiddenCount === 0 && totalChange !== undefined && (
+            <span className="mt-1 flex items-center gap-1">
+              <ChangeBadge change={totalChange} />
+              <span className="text-[10px] text-text-muted">vs. anterior</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -135,46 +148,57 @@ export default function DonutCategories({ data }: DonutCategoriesProps) {
             const isHidden = hidden.has(d.name);
             const percentage = !isHidden && total > 0 ? `${((d.total / total) * 100).toFixed(1)}%` : "—";
             return (
-              <button
-                key={d.name}
-                type="button"
-                onClick={() => toggle(d.name)}
-                aria-pressed={!isHidden}
-                title={isHidden ? `Mostrar ${d.name}` : `Esconder ${d.name}`}
-                className={`group w-full text-left px-1.5 py-1.5 rounded-lg transition-all duration-300 cursor-pointer hover:bg-fg/5 ${
-                  isHidden ? "opacity-45" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all duration-300"
-                      style={
-                        isHidden
-                          ? { border: "1px dashed var(--text-muted)", color: "var(--text-muted)" }
-                          : { backgroundColor: `${d.color}15`, border: `1px solid ${d.color}30`, color: d.color }
-                      }
-                    >
-                      <CategoryIcon name={d.name} size={11} />
-                    </span>
-                    <span
-                      className={`text-sm font-medium truncate transition-colors ${
-                        isHidden ? "text-text-muted line-through" : "text-text-dim group-hover:text-fg"
-                      }`}
-                    >
-                      {d.name}
-                    </span>
-                  </div>
-                  <span className="font-mono-value text-[10px] text-text-muted shrink-0">{percentage}</span>
-                </div>
-                <span
-                  className={`font-mono-value text-sm block mt-0.5 pl-7 transition-colors ${
-                    isHidden ? "text-text-muted" : "text-fg"
+              <div key={d.name} className="relative">
+                <button
+                  type="button"
+                  onClick={() => toggle(d.name)}
+                  aria-pressed={!isHidden}
+                  title={isHidden ? `Mostrar ${d.name}` : `Esconder ${d.name}`}
+                  className={`group w-full text-left px-1.5 py-1.5 rounded-lg transition-all duration-300 cursor-pointer hover:bg-fg/5 ${
+                    isHidden ? "opacity-45" : ""
                   }`}
                 >
-                  {formatCurrency(d.total)}
-                </span>
-              </button>
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all duration-300"
+                        style={
+                          isHidden
+                            ? { border: "1px dashed var(--text-muted)", color: "var(--text-muted)" }
+                            : { backgroundColor: `${d.color}15`, border: `1px solid ${d.color}30`, color: d.color }
+                        }
+                      >
+                        <CategoryIcon name={d.name} size={11} />
+                      </span>
+                      <span
+                        className={`text-sm font-medium truncate transition-colors ${
+                          isHidden ? "text-text-muted line-through" : "text-text-dim group-hover:text-fg"
+                        }`}
+                      >
+                        {d.name}
+                      </span>
+                    </div>
+                    <span className="font-mono-value text-[10px] text-text-muted shrink-0">{percentage}</span>
+                  </div>
+                  <span className="flex items-center gap-2 mt-0.5 pl-7">
+                    <span className={`font-mono-value text-sm transition-colors ${isHidden ? "text-text-muted" : "text-fg"}`}>
+                      {formatCurrency(d.total)}
+                    </span>
+                    {!isHidden && d.change !== undefined && <ChangeBadge change={d.change} />}
+                  </span>
+                </button>
+                {onDetails && (
+                  <button
+                    type="button"
+                    onClick={() => onDetails(d.name)}
+                    aria-label={`Ver despesas de ${d.name}`}
+                    title={`Ver despesas de ${d.name}`}
+                    className="absolute right-1 bottom-1.5 px-1.5 py-0.5 rounded-md text-[11px] font-medium text-text-muted hover:text-blue hover:bg-blue/10 transition-colors cursor-pointer"
+                  >
+                    Detalhes ›
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

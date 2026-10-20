@@ -1,6 +1,6 @@
 import {
   getPeriodTotals,
-  getExpensesByCategory,
+  getCategoryReport,
   getInvestmentTotals,
   getPatrimonyEvolution,
   getRecentTransactions,
@@ -29,7 +29,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const [
     monthlyTotals,
-    expensesByCategory,
+    categoryReport,
     investmentTotals,
     patrimonyEvolution,
     recentTransactions,
@@ -38,7 +38,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     debtsSummary,
   ] = await Promise.all([
     getPeriodTotals(userId, range),
-    getExpensesByCategory(userId, range),
+    getCategoryReport(userId, range),
     getInvestmentTotals(userId),
     getPatrimonyEvolution(userId),
     getRecentTransactions(userId, 5),
@@ -76,7 +76,23 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   return (
     <DashboardClient
       monthlyTotals={monthlyTotals}
-      expensesByCategory={expensesByCategory}
+      categoryReport={{
+        total: categoryReport.total,
+        previousTotal: categoryReport.previousTotal,
+        categories: categoryReport.categories,
+        trend: {
+          months: categoryReport.trend.months.map((m) => m.toISOString()),
+          series: categoryReport.trend.series,
+        },
+        expenses: categoryReport.transactions.map((t) => ({
+          id: t.id,
+          description: t.description,
+          amount: t.amount,
+          date: t.date.toISOString(),
+          categoryId: t.categoryId,
+          account: t.account.name,
+        })),
+      }}
       investmentTotals={investmentTotals}
       patrimonyEvolution={patrimonyEvolution}
       recentTransactions={serializedTransactions}

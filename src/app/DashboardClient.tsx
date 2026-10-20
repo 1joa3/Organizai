@@ -6,6 +6,8 @@ import HeroSaldo from "@/components/dashboard/HeroSaldo";
 import KpiStrip from "@/components/dashboard/KpiStrip";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import DonutCategories from "@/components/charts/DonutCategories";
+import CategoryTrendChart from "@/components/charts/CategoryTrendChart";
+import CategoryDetailsModal, { type CategoryExpense } from "@/components/dashboard/CategoryDetailsModal";
 import LinePatrimony from "@/components/charts/LinePatrimony";
 import DebtPayoffChart from "@/components/charts/DebtPayoffChart";
 import GoalProgressBar from "@/components/charts/GoalProgressBar";
@@ -19,11 +21,21 @@ import {
   isDefaultLayout,
   saveLayoutCookie,
 } from "@/lib/dashboardLayout";
+import type { CategoryRow } from "@/lib/categoryBreakdown";
 import { formatCurrency, formatMonthYear, calcPercent } from "@/lib/formatters";
 
 interface Props {
   monthlyTotals: { receitas: number; despesas: number; saldo: number };
-  expensesByCategory: { categoryId: string; name: string; color: string; total: number }[];
+  categoryReport: {
+    total: number;
+    previousTotal: number;
+    categories: CategoryRow[];
+    trend: {
+      months: string[];
+      series: { categoryId: string; name: string; color: string; values: number[] }[];
+    };
+    expenses: CategoryExpense[];
+  };
   installmentsSummary: { name: string; color: string; total: number; currentInstallment: number; totalInstallments: number; currentAmount: number; targetAmount: number }[];
   investmentTotals: { invested: number; current: number; returnAmount: number; returnPercent: number };
   patrimonyEvolution: { label: string; saldo: number; investido: number }[];
@@ -58,7 +70,7 @@ interface Props {
 
 export default function DashboardClient({
   monthlyTotals,
-  expensesByCategory,
+  categoryReport,
   investmentTotals,
   patrimonyEvolution,
   recentTransactions,
@@ -71,6 +83,23 @@ export default function DashboardClient({
 }: Props) {
   const [layout, setLayout] = useState(initialLayout);
   const [editing, setEditing] = useState(false);
+  const [categoryView, setCategoryView] = useState<"distribuicao" | "evolucao">("distribuicao");
+  const [detailCategoryId, setDetailCategoryId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // No donut só entram as categorias com gasto no período
+  const spentCategories = categoryReport.categories.filter((c) => c.total > 0);
+  const totalChange =
+    categoryReport.previousTotal > 0
+      ? (categoryReport.total - categoryReport.previousTotal) / categoryReport.previousTotal
+      : null;
+
+  function openCategoryDetails(name: string) {
+    const category = spentCategories.find((c) => c.name === name);
+    if (!category) return;
+    setDetailCategoryId(category.categoryId);
+    setDetailOpen(true);
+  }
 
   function blockProps(id: DashboardBlockId) {
     return {
@@ -230,10 +259,32 @@ export default function DashboardClient({
             transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="h-full glass-card p-6"
           >
-            <h2 className="font-display text-lg text-fg mb-6">
-              Despesas por Categoria
-            </h2>
-            <DonutCategories data={expensesByCategory} />
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+              <h2 className="font-display text-lg text-fg">Despesas por Categoria</h2>
+              <div className="flex gap-1 p-1 bg-fg/5 rounded-lg border border-fg/10">
+                {([
+                  ["distribuicao", "Distribuição"],
+                  ["evolucao", "Evolução"],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setCategoryView(value)}
+                    aria-pressed={categoryView === value}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                      categoryView === value ? "bg-fg/10 text-fg" : "text-text-muted hover:text-fg"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {categoryView === "distribuicao" ? (
+              <DonutCategories data={spentCategories} totalChange={totalChange} onDetails={openCategoryDetails} />
+            ) : (
+              <CategoryTrendChart months={categoryReport.trend.months} series={categoryReport.trend.series} highlightId={null} />
+            )}
           </motion.div>
         </ResizableBlock>
 
@@ -339,6 +390,14 @@ export default function DashboardClient({
           </motion.div>
         </ResizableBlock>
       </div>
+
+      <CategoryDetailsModal
+        isOpen={detailOpen}
+        category={categoryReport.categories.find((c) => c.categoryId === detailCategoryId) ?? null}
+        expenses={categoryReport.expenses}
+        periodLabel={periodLabel}
+        onClose={() => setDetailOpen(false)}
+      />
     </div>
   );
 }
