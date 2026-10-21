@@ -27,7 +27,7 @@ export default function DebtPayoffChart({ timeline }: DebtPayoffChartProps) {
 
   if (timeline.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
+      <div className="flex items-center justify-center h-full min-h-48 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Nenhuma dívida parcelada em aberto
       </div>
     );
@@ -95,7 +95,8 @@ export default function DebtPayoffChart({ timeline }: DebtPayoffChartProps) {
   };
 
   return (
-    <div className="h-48 w-full">
+    // Altura mínima de sempre; cresce junto quando o bloco fica mais alto
+    <div className="relative h-full min-h-48 w-full">
       <Bar data={chartData} options={options} />
     </div>
   );

@@ -40,7 +40,7 @@ export default function LinePatrimony({ data }: LinePatrimonyProps) {
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
+      <div className="flex items-center justify-center h-full min-h-64 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Sem dados para exibir
       </div>
     );
@@ -156,7 +156,8 @@ export default function LinePatrimony({ data }: LinePatrimonyProps) {
   };
 
   return (
-    <div className="h-64 w-full">
+    // Altura mínima de sempre; cresce junto quando o bloco fica mais alto
+    <div className="relative h-full min-h-64 w-full">
       <Line data={chartData} options={options} />
     </div>
   );

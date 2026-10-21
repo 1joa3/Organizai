@@ -8,6 +8,8 @@ import {
   moveBlock,
   setBlockSpan,
   setBlockHidden,
+  setBlockHeight,
+  clampHeight,
   spanFromPointer,
   clampSpan,
 } from "./dashboardLayout";
@@ -22,6 +24,8 @@ describe("parseLayout / formatLayout", () => {
     let layout = setBlockSpan(defaultLayout(), "metas", 8);
     layout = moveBlock(layout, "metas", -1);
     layout = setBlockHidden(layout, "dividas", true);
+    layout = setBlockHeight(layout, "patrimonio", 420);
+    expect(formatLayout(layout)).toContain("patrimonio:7:420");
     expect(parseLayout(formatLayout(layout))).toEqual(layout);
     expect(isDefaultLayout(layout)).toBe(false);
   });
@@ -57,6 +61,23 @@ describe("moveBlock", () => {
     const layout = defaultLayout();
     expect(moveBlock(layout, "kpis", -1)).toBe(layout);
     expect(moveBlock(layout, "recentes", 1)).toBe(layout);
+  });
+});
+
+describe("setBlockHeight", () => {
+  it("arredonda para 10px, limita entre 120 e 1200 e null volta ao automático", () => {
+    let layout = setBlockHeight(defaultLayout(), "metas", 333);
+    expect(layout.heights.metas).toBe(330);
+    layout = setBlockHeight(layout, "metas", 5000);
+    expect(layout.heights.metas).toBe(1200);
+    expect(setBlockHeight(layout, "metas", null).heights).toEqual({});
+    expect(clampHeight(10)).toBe(120);
+  });
+
+  it("ignora altura inválida no cookie, mantendo a largura", () => {
+    const layout = parseLayout("metas:6:50,recentes:4:abc,saldo:5:300");
+    expect(layout.heights).toEqual({ saldo: 300 });
+    expect(layout.spans.metas).toBe(6);
   });
 });
 

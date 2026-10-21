@@ -1,9 +1,10 @@
 /**
- * Layout do Dashboard: ordem dos blocos, quais estão escondidos e a largura
- * de cada um, em colunas de um grid de 12. Salvo num cookie para o servidor
- * já renderizar do jeito escolhido. Formato: os blocos na ordem, `id:largura`,
- * com `!` na frente dos escondidos — `kpis:12,!saldo:5,patrimonio:7,...`.
- * O formato antigo (só larguras, sem ordem nem `!`) continua sendo aceito.
+ * Layout do Dashboard: ordem dos blocos, quais estão escondidos, a largura
+ * de cada um (em colunas de um grid de 12) e a altura, quando escolhida.
+ * Salvo num cookie para o servidor já renderizar do jeito escolhido.
+ * Formato: os blocos na ordem, `id:largura` ou `id:largura:altura`, com `!`
+ * na frente dos escondidos — `kpis:12,!saldo:5,patrimonio:7:420,...`.
+ * Os formatos antigos (sem ordem, sem `!`, sem altura) continuam aceitos.
  *
  * As larguras valem quando a área do Dashboard é larga (12 colunas). Mais
  * estreita, os blocos pequenos dividem a linha em dois e o resto ocupa a
@@ -28,17 +29,26 @@ export interface DashboardLayout {
   /** Todos os blocos, na ordem de exibição (inclusive os escondidos) */
   order: DashboardBlockId[];
   spans: Record<DashboardBlockId, number>;
+  /** Altura mínima em px; ausente = do tamanho do conteúdo */
+  heights: Partial<Record<DashboardBlockId, number>>;
   hidden: DashboardBlockId[];
 }
 
 export const MIN_SPAN = 3;
 export const MAX_SPAN = 12;
 
+/** Altura escolhida: de 120 a 1200px, em passos de 10px */
+export const MIN_HEIGHT = 120;
+export const MAX_HEIGHT = 1200;
+export const HEIGHT_STEP = 10;
+
 /** Atalhos de largura do modo de edição */
 export const SPAN_PRESETS = [
+  { span: 3, label: "¼" },
   { span: 4, label: "⅓" },
   { span: 6, label: "½" },
   { span: 8, label: "⅔" },
+  { span: 9, label: "¾" },
   { span: 12, label: "Inteiro" },
 ] as const;
 
@@ -56,12 +66,17 @@ export function defaultLayout(): DashboardLayout {
   return {
     order: [...BLOCK_IDS],
     spans: Object.fromEntries(DASHBOARD_BLOCKS.map((b) => [b.id, b.defaultSpan])) as DashboardLayout["spans"],
+    heights: {},
     hidden: [],
   };
 }
 
 export function clampSpan(span: number): number {
   return Math.min(MAX_SPAN, Math.max(MIN_SPAN, Math.round(span)));
+}
+
+export function clampHeight(height: number): number {
+  return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.round(height / HEIGHT_STEP) * HEIGHT_STEP));
 }
 
 /**
@@ -76,7 +91,7 @@ export function parseLayout(value: string | undefined): DashboardLayout {
   const order: DashboardBlockId[] = [];
   const hidden: DashboardBlockId[] = [];
   for (const entry of value.split(",")) {
-    const [rawId, spanStr] = entry.split(":");
+    const [rawId, spanStr, heightStr] = entry.split(":");
     const isHidden = rawId?.startsWith("!");
     const id = isHidden ? rawId.slice(1) : rawId;
     if (!id || !isBlockId(id) || order.includes(id)) continue;
@@ -84,6 +99,10 @@ export function parseLayout(value: string | undefined): DashboardLayout {
     if (isHidden) hidden.push(id);
     const span = Number(spanStr);
     if (Number.isInteger(span) && span >= MIN_SPAN && span <= MAX_SPAN) layout.spans[id] = span;
+    const height = Number(heightStr);
+    if (heightStr && Number.isInteger(height) && height >= MIN_HEIGHT && height <= MAX_HEIGHT) {
+      layout.heights[id] = height;
+    }
   }
 
   BLOCK_IDS.forEach((id, defaultIndex) => {
@@ -97,7 +116,10 @@ export function parseLayout(value: string | undefined): DashboardLayout {
 
 export function formatLayout(layout: DashboardLayout): string {
   return layout.order
-    .map((id) => `${layout.hidden.includes(id) ? "!" : ""}${id}:${layout.spans[id]}`)
+    .map((id) => {
+      const height = layout.heights[id];
+      return `${layout.hidden.includes(id) ? "!" : ""}${id}:${layout.spans[id]}${height ? `:${height}` : ""}`;
+    })
     .join(",");
 }
 
@@ -127,6 +149,14 @@ export function moveBlock(layout: DashboardLayout, id: DashboardBlockId, delta: 
 
 export function setBlockSpan(layout: DashboardLayout, id: DashboardBlockId, span: number): DashboardLayout {
   return { ...layout, spans: { ...layout.spans, [id]: clampSpan(span) } };
+}
+
+/** Altura do bloco; null volta para o tamanho do conteúdo */
+export function setBlockHeight(layout: DashboardLayout, id: DashboardBlockId, height: number | null): DashboardLayout {
+  const heights = { ...layout.heights };
+  if (height === null) delete heights[id];
+  else heights[id] = clampHeight(height);
+  return { ...layout, heights };
 }
 
 export function setBlockHidden(layout: DashboardLayout, id: DashboardBlockId, hide: boolean): DashboardLayout {

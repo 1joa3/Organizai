@@ -21,6 +21,7 @@ import {
   isDefaultLayout,
   moveBlock,
   saveLayoutCookie,
+  setBlockHeight,
   setBlockHidden,
   setBlockSpan,
   visibleBlocks,
@@ -130,11 +131,14 @@ export default function DashboardClient({
     return {
       label: blockLabel(id),
       span: layout.spans[id],
+      height: layout.heights[id],
       editing,
       wide,
       // Durante o arraste só pré-visualiza; salva ao soltar
-      onResize: (span: number) => setLayout((prev) => setBlockSpan(prev, id, span)),
-      onResizeEnd: (span: number) => updateLayout(setBlockSpan(layout, id, span)),
+      onResize: (size: { span: number; height: number | null }) =>
+        setLayout((prev) => setBlockHeight(setBlockSpan(prev, id, size.span), id, size.height)),
+      onResizeEnd: (size: { span: number; height: number | null }) =>
+        updateLayout(setBlockHeight(setBlockSpan(layout, id, size.span), id, size.height)),
       onMoveBefore: index > 0 ? () => updateLayout(moveBlock(layout, id, -1)) : undefined,
       onMoveAfter: index < visible.length - 1 ? () => updateLayout(moveBlock(layout, id, 1)) : undefined,
       onHide: () => updateLayout(setBlockHidden(layout, id, true)),
@@ -167,12 +171,14 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6"
+        className="h-full glass-card p-6 flex flex-col"
       >
         <h2 className="font-display text-lg text-fg mb-6">
           Evolução Patrimonial
         </h2>
-        <LinePatrimony data={patrimonyEvolution} />
+        <div className="flex-1">
+          <LinePatrimony data={patrimonyEvolution} />
+        </div>
       </motion.div>
     ),
     // Dívidas parceladas em aberto
@@ -181,7 +187,7 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6"
+        className="h-full glass-card p-6 flex flex-col"
       >
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <h2 className="font-display text-lg text-fg">Quitação de Dívidas</h2>
@@ -202,7 +208,9 @@ export default function DashboardClient({
             </div>
           </div>
         </div>
-        <DebtPayoffChart timeline={debtsSummary.timeline} />
+        <div className="flex-1">
+          <DebtPayoffChart timeline={debtsSummary.timeline} />
+        </div>
       </motion.div>
     ),
     // Donut de categorias
@@ -211,7 +219,7 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6"
+        className="h-full glass-card p-6 flex flex-col"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 className="font-display text-lg text-fg">Despesas por Categoria</h2>
@@ -234,11 +242,13 @@ export default function DashboardClient({
             ))}
           </div>
         </div>
-        {categoryView === "distribuicao" ? (
-          <DonutCategories data={spentCategories} totalChange={totalChange} onDetails={openCategoryDetails} />
-        ) : (
-          <CategoryTrendChart months={categoryReport.trend.months} series={categoryReport.trend.series} highlightId={null} />
-        )}
+        <div className="flex-1">
+          {categoryView === "distribuicao" ? (
+            <DonutCategories data={spentCategories} totalChange={totalChange} onDetails={openCategoryDetails} />
+          ) : (
+            <CategoryTrendChart months={categoryReport.trend.months} series={categoryReport.trend.series} highlightId={null} />
+          )}
+        </div>
       </motion.div>
     ),
     // Despesas Parceladas
@@ -400,8 +410,8 @@ export default function DashboardClient({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>
                   {wide
-                    ? "Use a barra de cada bloco para reordenar, mudar a largura ou esconder. A alça na borda direita também ajusta a largura."
-                    : "Use a barra de cada bloco para reordenar ou esconder. Em telas mais largas dá para mudar a largura também."}
+                    ? "Use a barra de cada bloco para reordenar, mudar a largura ou esconder. Arraste a borda direita para a largura, ou o canto inferior para largura e altura juntas."
+                    : "Use a barra de cada bloco para reordenar ou esconder, e arraste o canto inferior para mudar a altura. Em telas mais largas dá para mudar a largura também."}
                 </span>
                 {!isDefaultLayout(layout) && (
                   <button

@@ -15,6 +15,9 @@ import { useThemeColors } from "./useThemeColors";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
+/** Categorias listadas antes do "Ver todas" */
+const LEGEND_LIMIT = 6;
+
 interface CategoryData {
   name: string;
   color: string;
@@ -35,6 +38,7 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
   const colors = useThemeColors();
   // Categorias escondidas pela legenda, por nome: continuam escondidas ao trocar de período
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
 
   function toggle(name: string) {
     setHidden((prev) => {
@@ -47,7 +51,7 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-56 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
+      <div className="flex items-center justify-center h-full min-h-56 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Sem dados para exibir
       </div>
     );
@@ -105,12 +109,16 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
   const visible = data.filter((d) => !hidden.has(d.name));
   const total = visible.reduce((sum, d) => sum + d.total, 0);
   const hiddenCount = data.length - visible.length;
+  // Sem rolagem dentro do cartão: as maiores primeiro, o resto num clique
+  const listed = showAll ? data : data.slice(0, LEGEND_LIMIT);
+  const extra = data.length - LEGEND_LIMIT;
 
   return (
     // Lado a lado só quando sobra espaço para a legenda (bloco ≥ 32rem);
     // abaixo disso a legenda vai para baixo do donut, na largura toda
-    <div className="flex flex-col @lg:flex-row items-center @lg:items-stretch gap-6 h-full">
-      <div className="w-44 h-44 relative shrink-0 @lg:self-center">
+    <div className="flex flex-col @lg:flex-row items-center gap-6 h-full">
+      {/* Cresce com o bloco: mais largo ou mais alto, rosca maior */}
+      <div className="w-44 h-44 @lg:w-48 @lg:h-48 @3xl:w-60 @3xl:h-60 relative shrink-0 self-center">
         <Doughnut data={chartData} options={options} />
         {/* Centro do donut */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -129,83 +137,111 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
         </div>
       </div>
 
-      {/* Legenda: cada item liga/desliga a categoria no gráfico */}
-      <div className="flex flex-col gap-1 flex-1 w-full min-w-0">
-        <div className="flex items-center justify-between gap-2 h-5 px-1.5 whitespace-nowrap">
-          <span className="text-[11px] text-text-muted truncate">
-            {hiddenCount > 0 ? `${visible.length} de ${data.length}` : "Clique para filtrar"}
-          </span>
-          {hiddenCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setHidden(new Set())}
-              className="text-[11px] font-medium text-blue hover:underline cursor-pointer shrink-0"
-            >
+      {/* Legenda em colunas alinhadas (subgrid): ícone · nome e barra · valor e % · detalhes.
+          Clicar na linha liga/desliga a categoria no gráfico */}
+      <div className="@container/legend flex-1 w-full min-w-0 self-stretch flex flex-col justify-center">
+        {/* Só aparece filtrando: sem filtro, ícone e valor já dizem o que é cada coluna */}
+        {hiddenCount > 0 && (
+          <div className="flex items-center justify-between gap-2 mb-1.5 px-2 text-xs text-text-muted">
+            <span>
+              {visible.length} de {data.length} categorias no gráfico
+            </span>
+            <button type="button" onClick={() => setHidden(new Set())} className="text-blue hover:underline cursor-pointer">
               Mostrar todas
             </button>
-          )}
-        </div>
-        <div className="flex flex-col gap-0.5 max-h-56 overflow-y-auto">
-          {data.map((d) => {
+          </div>
+        )}
+
+        {/* Lista muito estreita (< 17rem): some a coluna do ícone — a cor já está na barra — e o nome ganha o espaço */}
+        <ul
+          className={`grid gap-y-0.5 ${
+            onDetails
+              ? "grid-cols-[minmax(0,1fr)_auto_2rem] @[17rem]/legend:grid-cols-[2.25rem_minmax(0,1fr)_auto_2rem]"
+              : "grid-cols-[minmax(0,1fr)_auto_0.25rem] @[17rem]/legend:grid-cols-[2.25rem_minmax(0,1fr)_auto_0.25rem]"
+          }`}
+        >
+          {listed.map((d) => {
             const isHidden = hidden.has(d.name);
-            const percentage = !isHidden && total > 0 ? `${((d.total / total) * 100).toFixed(1)}%` : "—";
+            const share = !isHidden && total > 0 ? d.total / total : 0;
             return (
-              <div key={d.name} className="flex items-center gap-1 min-w-0">
+              <li key={d.name} className="col-span-full grid grid-cols-subgrid items-center gap-x-3 rounded-lg hover:bg-fg/[0.04] transition-colors">
                 <button
                   type="button"
                   onClick={() => toggle(d.name)}
                   aria-pressed={!isHidden}
-                  title={isHidden ? `Mostrar ${d.name}` : `Esconder ${d.name}`}
-                  className={`group flex-1 min-w-0 flex items-center gap-2.5 text-left px-1.5 py-1.5 rounded-lg transition-all duration-300 cursor-pointer hover:bg-fg/5 ${
+                  title={isHidden ? `Mostrar ${d.name} no gráfico` : `Esconder ${d.name} do gráfico`}
+                  className={`group col-span-2 @[17rem]/legend:col-span-3 grid grid-cols-subgrid items-center gap-x-3 py-2 text-left cursor-pointer transition-opacity duration-300 ${
                     isHidden ? "opacity-45" : ""
                   }`}
                 >
                   <span
-                    className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all duration-300"
+                    // A coluna já inclui o recuo de 0.5rem à esquerda (padding num subgrid não soma à coluna)
+                    className="hidden @[17rem]/legend:flex ml-2 w-7 h-7 rounded-md items-center justify-center transition-all duration-300"
                     style={
                       isHidden
                         ? { border: "1px dashed var(--text-muted)", color: "var(--text-muted)" }
                         : { backgroundColor: `${d.color}15`, border: `1px solid ${d.color}30`, color: d.color }
                     }
                   >
-                    <CategoryIcon name={d.name} size={12} />
+                    <CategoryIcon name={d.name} size={13} />
                   </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span
-                        className={`text-sm font-medium truncate transition-colors ${
-                          isHidden ? "text-text-muted line-through" : "text-text-dim group-hover:text-fg"
-                        }`}
-                      >
-                        {d.name}
-                      </span>
-                      <span className={`font-mono-value text-sm shrink-0 transition-colors ${isHidden ? "text-text-muted" : "text-fg"}`}>
-                        {formatCurrency(d.total)}
-                      </span>
+
+                  <span className="min-w-0 pl-2 @[17rem]/legend:pl-0">
+                    <span
+                      className={`block text-sm font-medium truncate transition-colors ${
+                        isHidden ? "text-text-muted line-through" : "text-text-dim group-hover:text-fg"
+                      }`}
+                    >
+                      {d.name}
                     </span>
-                    <span className="flex items-center justify-between gap-2 mt-0.5">
-                      <span className="font-mono-value text-[10px] text-text-muted">{percentage}</span>
+                    {/* Barra da fatia: mesma escala para todas as linhas */}
+                    <span className="mt-1.5 block h-1 rounded-full bg-fg/5 overflow-hidden">
+                      <span
+                        className="block h-full rounded-full transition-[width] duration-500"
+                        style={{ width: `${share * 100}%`, backgroundColor: d.color }}
+                      />
+                    </span>
+                  </span>
+
+                  <span className="text-right">
+                    <span className={`block font-mono-value text-sm tabular-nums transition-colors ${isHidden ? "text-text-muted" : "text-fg"}`}>
+                      {formatCurrency(d.total)}
+                    </span>
+                    <span className="mt-0.5 flex items-center justify-end gap-1.5 font-mono-value text-[10px] text-text-muted tabular-nums">
+                      {isHidden ? "oculta" : `${(share * 100).toFixed(1).replace(".", ",")}%`}
                       {!isHidden && d.change !== undefined && <ChangeBadge change={d.change} />}
                     </span>
                   </span>
                 </button>
+
                 {onDetails && (
                   <button
                     type="button"
                     onClick={() => onDetails(d.name)}
                     aria-label={`Ver despesas de ${d.name}`}
                     title={`Ver despesas de ${d.name}`}
-                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-text-muted hover:text-blue hover:bg-blue/10 transition-colors cursor-pointer"
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:text-blue hover:bg-blue/10 transition-colors cursor-pointer"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M9 18l6-6-6-6" />
                     </svg>
                   </button>
                 )}
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
+
+        {extra > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAll(!showAll)}
+            aria-expanded={showAll}
+            className="mt-1.5 self-start px-2 py-1 rounded-md text-xs font-medium text-blue hover:bg-blue/10 transition-colors cursor-pointer"
+          >
+            {showAll ? "Mostrar menos" : `Ver todas (+${extra})`}
+          </button>
+        )}
       </div>
     </div>
   );
