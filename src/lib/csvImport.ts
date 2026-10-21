@@ -111,25 +111,58 @@ interface ImportRow {
   type: "despesa" | "receita";
 }
 
+export interface InstallmentMatch {
+  baseName: string;
+  current: number;
+  total: number;
+}
+
+// "parcela", "parc", "parc." seguido de "2/6", "02/06" ou "2 de 6"
+const PARCELA = String.raw`(?:parcela|parc)\.?\s*(\d{1,3})\s*(?:\/|de)\s*(\d{1,3})`;
+const SEPARATORS = String.raw`[\s\-–—:|,.]*`;
+
+const INSTALLMENT_PATTERNS: { regex: RegExp; name: number; current: number; total: number }[] = [
+  // "Loja - Parcela 2/6", "Loja Parc 02/06", "Loja – Parcela 2 de 6 "
+  { regex: new RegExp(String.raw`^(.*?)${SEPARATORS}\b${PARCELA}[\s.)]*$`, "i"), name: 1, current: 2, total: 3 },
+  // "Parcela 2/6 - Loja"
+  { regex: new RegExp(String.raw`^${PARCELA}${SEPARATORS}(.+)$`, "i"), name: 3, current: 1, total: 2 },
+  // "Loja (2/6)" — formato interno, e o que o app exporta
+  { regex: /^(.*?)\s*\(\s*(\d{1,3})\s*\/\s*(\d{1,3})\s*\)\s*$/, name: 1, current: 2, total: 3 },
+];
+
 /**
- * Detecta se a linha da fatura é uma parcela (ex: "Loja - Parcela 2/6",
- * ou já no formato interno "Loja (2/6)") — bancos só listam a parcela do
- * mês corrente, então expandimos para as parcelas futuras (current..total),
- * uma por mês, mesmo valor. Parcelas passadas (1..current-1) não são
- * recriadas, pois já são histórico e não afetam o saldo devedor futuro.
+ * Detecta se a descrição da fatura é de uma parcela. Aceita as variações
+ * que aparecem nas exportações dos bancos ("Loja - Parcela 2/6",
+ * "Loja Parc 02/06", "Parcela 2 de 6 - Loja", "Loja (2/6)"). Retorna null se
+ * não for parcela ou se os números forem inconsistentes.
+ */
+export function detectInstallment(description: string): InstallmentMatch | null {
+  const text = description.trim();
+  for (const p of INSTALLMENT_PATTERNS) {
+    const m = text.match(p.regex);
+    if (!m) continue;
+    const baseName = m[p.name].replace(/^[\s\-–—:|,.]+|[\s\-–—:|,]+$/g, "").trim();
+    const current = parseInt(m[p.current]);
+    const total = parseInt(m[p.total]);
+    if (baseName && total >= 2 && current >= 1 && current <= total) {
+      return { baseName, current, total };
+    }
+  }
+  return null;
+}
+
+/**
+ * Expande uma linha de parcela (detectada pela descrição, ou informada em
+ * `installment` quando o usuário marca na mão) — bancos só listam a parcela
+ * do mês corrente, então geramos as parcelas futuras (current..total), uma
+ * por mês, mesmo valor. Parcelas passadas (1..current-1) não são recriadas,
+ * pois já são histórico e não afetam o saldo devedor futuro.
  * Se não for parcelada, retorna a própria linha sem alterações.
  */
-export function expandInstallmentRow(row: ImportRow): ImportRow[] {
-  const match =
-    row.description.match(/^(.*?)\s*-?\s*parcela\s+(\d+)\s*\/\s*(\d+)\s*$/i) ??
-    row.description.match(/^(.*?)\s*\((\d+)\s*\/\s*(\d+)\)\s*$/);
-
-  if (!match) return [row];
-
-  const baseName = match[1].trim();
-  const current = parseInt(match[2]);
-  const total = parseInt(match[3]);
-  if (!baseName || current < 1 || total < current) return [row];
+export function expandInstallmentRow(row: ImportRow, installment?: InstallmentMatch | null): ImportRow[] {
+  const info = installment ?? detectInstallment(row.description);
+  if (!info) return [row];
+  const { baseName, current, total } = info;
 
   const expanded: ImportRow[] = [];
   for (let n = current; n <= total; n++) {

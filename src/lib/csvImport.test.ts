@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCSV, coerceDate, coerceAmount, guessColumn, expandInstallmentRow } from "./csvImport";
+import { parseCSV, coerceDate, coerceAmount, guessColumn, expandInstallmentRow, detectInstallment } from "./csvImport";
 
 describe("parseCSV", () => {
   it("separa por vírgula quando é o delimitador predominante", () => {
@@ -156,5 +156,47 @@ describe("expandInstallmentRow", () => {
   it("não expande quando a parcela atual é maior que o total (dado inconsistente)", () => {
     const row = { date: new Date(2024, 0, 1), description: "Erro - Parcela 5/3", amount: 10, type: "despesa" as const };
     expect(expandInstallmentRow(row)).toEqual([row]);
+  });
+});
+
+describe("detectInstallment", () => {
+  it.each([
+    ["Amazon - Parcela 2/6", "Amazon", 2, 6],
+    ["Amazon – Parcela 2/6", "Amazon", 2, 6],
+    ["Amazon-Parcela 2/6", "Amazon", 2, 6],
+    ["Amazon Parcela 02/06", "Amazon", 2, 6],
+    ["Amazon - Parc 2/6", "Amazon", 2, 6],
+    ["Amazon - Parc.2/6", "Amazon", 2, 6],
+    ["Amazon - Parcela 2 de 6", "Amazon", 2, 6],
+    ["Amazon - Parcela 2/6 ", "Amazon", 2, 6],
+    ["Mercadolivre*Loja - Parcela 3/10", "Mercadolivre*Loja", 3, 10],
+    ["Parcela 2/6 - Amazon", "Amazon", 2, 6],
+    ["Notebook (1/3)", "Notebook", 1, 3],
+    ["Notebook ( 1 / 3 )", "Notebook", 1, 3],
+  ])('reconhece "%s"', (description, baseName, current, total) => {
+    expect(detectInstallment(description)).toEqual({ baseName, current, total });
+  });
+
+  it.each([
+    "Supermercado",
+    "Parcela 2/6", // sem nome da compra
+    "Loja - Parcela 1/1",
+    "Loja - Parcela 5/3",
+    "Loja - Parcela 0/3",
+    "Comparcelado 2/6", // "parc" no meio de outra palavra
+    "Pagamento 10/05",
+  ])('não reconhece "%s"', (description) => {
+    expect(detectInstallment(description)).toBeNull();
+  });
+});
+
+describe("expandInstallmentRow com parcela informada", () => {
+  it("usa os dados informados mesmo quando a descrição não tem parcela", () => {
+    const result = expandInstallmentRow(
+      { date: new Date(2024, 0, 10), description: "Loja", amount: 30, type: "despesa" },
+      { baseName: "Loja", current: 2, total: 3 }
+    );
+    expect(result.map((r) => r.description)).toEqual(["Loja (2/3)", "Loja (3/3)"]);
+    expect(result[1].date).toEqual(new Date(2024, 1, 10));
   });
 });

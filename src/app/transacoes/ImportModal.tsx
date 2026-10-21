@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { Fragment, useState, useTransition, useMemo } from "react";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { importTransactions } from "./actions";
-import { parseCSV, coerceDate, coerceAmount, guessColumn, expandInstallmentRow } from "@/lib/csvImport";
+import {
+  parseCSV,
+  coerceDate,
+  coerceAmount,
+  guessColumn,
+  expandInstallmentRow,
+  detectInstallment,
+  type InstallmentMatch,
+} from "@/lib/csvImport";
 import { formatCurrency, formatDate, formatDateInput } from "@/lib/formatters";
 
 const MAX_ROWS = 5000;
@@ -27,13 +35,24 @@ interface ImportModalProps {
   categories: { id: string; name: string; type: string }[];
 }
 
+// Ajustes feitos na pré-visualização, indexados pela linha original do
+// arquivo (antes da expansão das parcelas) e guardados junto com as linhas a
+// que se referem — se as linhas mudarem, os índices deixam de valer.
 interface OverrideState {
   rows: unknown;
-  detect: boolean;
-  values: Record<number, string>;
+  // categoria escolhida para a linha (vale para todas as parcelas dela)
+  categories: Record<number, string>;
+  // parcela marcada/corrigida à mão; null = "não é parcela"
+  installments: Record<number, InstallmentMatch | null>;
 }
 
-const NO_OVERRIDE_STATE: OverrideState = { rows: null, detect: false, values: {} };
+const NO_OVERRIDE_STATE: OverrideState = { rows: null, categories: {}, installments: {} };
+
+interface InstallmentEdit {
+  index: number;
+  current: string;
+  total: string;
+}
 
 export default function ImportModal({ isOpen, onClose, accounts, categories }: ImportModalProps) {
   const [isPending, startTransition] = useTransition();
@@ -60,10 +79,12 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   const [detectInstallments, setDetectInstallments] = useState(true);
   // Categoria escolhida por linha, guardada junto com as linhas a que se refere
   const [overrideState, setOverrideState] = useState<OverrideState>(NO_OVERRIDE_STATE);
+  const [installmentEdit, setInstallmentEdit] = useState<InstallmentEdit | null>(null);
 
   function reset() {
     setInputMode("csv");
     setOverrideState(NO_OVERRIDE_STATE);
+    setInstallmentEdit(null);
     setFileName(null);
     setParsed(null);
     setTruncated(false);
@@ -85,6 +106,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   function switchMode(mode: InputMode) {
     setInputMode(mode);
     setOverrideState(NO_OVERRIDE_STATE);
+    setInstallmentEdit(null);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -164,16 +186,33 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
     });
   }, [inputMode, manualEntries, parsed, dateCol, descCol, amountCol, typeMode]);
 
+  // Remapeamento de colunas, troca de arquivo ou adição/remoção manual geram
+  // outras linhas — aí os ajustes antigos são ignorados.
+  const overrides = overrideState.rows === singleRows ? overrideState : NO_OVERRIDE_STATE;
+  const editing = installmentEdit && installmentEdit.index < singleRows.length ? installmentEdit : null;
+
   const mappedRows = useMemo(() => {
-    const withOrigin = singleRows.map((r) => ({ ...r, manualId: r.manualId }));
-    if (!detectInstallments) return withOrigin;
-    return withOrigin.flatMap((r) => {
-      if (!r.valid || !r.date || r.amount === null) return [r];
-      const expanded = expandInstallmentRow({ date: r.date, description: r.description, amount: r.amount, type: r.type });
-      if (expanded.length === 1) return [r];
-      return expanded.map((e) => ({ ...e, valid: true, manualId: r.manualId }));
+    return singleRows.flatMap((r, sourceIndex) => {
+      const base = { ...r, sourceIndex, installment: null as InstallmentMatch | null, isFirst: true };
+      if (!r.valid || !r.date || r.amount === null) return [base];
+
+      const info =
+        sourceIndex in overrides.installments
+          ? overrides.installments[sourceIndex]
+          : detectInstallments
+            ? detectInstallment(r.description)
+            : null;
+      if (!info) return [base];
+
+      const expanded = expandInstallmentRow({ date: r.date, description: r.description, amount: r.amount, type: r.type }, info);
+      return expanded.map((e, k) => ({
+        ...base,
+        ...e,
+        installment: { ...info, current: info.current + k },
+        isFirst: k === 0,
+      }));
     });
-  }, [singleRows, detectInstallments]);
+  }, [singleRows, overrides, detectInstallments]);
 
   const validCount = mappedRows.filter((r) => r.valid).length;
   const invalidCount = mappedRows.length - validCount;
@@ -181,28 +220,42 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   const isMapped = dateCol >= 0 && descCol >= 0 && amountCol >= 0;
   const hasRows = inputMode === "csv" ? isMapped && mappedRows.length > 0 : manualEntries.length > 0;
 
-  // Linhas podem mudar de forma (expansão de parcelas, remapeamento de
-  // colunas, adição/remoção manual) — aí os índices dos overrides deixam de
-  // fazer sentido e eles são ignorados.
-  const categoryOverrides =
-    overrideState.rows === singleRows && overrideState.detect === detectInstallments
-      ? overrideState.values
-      : NO_OVERRIDE_STATE.values;
+  function setCategoryOverride(sourceIndex: number, value: string) {
+    setOverrideState({ ...overrides, rows: singleRows, categories: { ...overrides.categories, [sourceIndex]: value } });
+  }
 
-  function setCategoryOverride(index: number, value: string) {
-    setOverrideState({
-      rows: singleRows,
-      detect: detectInstallments,
-      values: { ...categoryOverrides, [index]: value },
+  function setInstallmentOverride(sourceIndex: number, value: InstallmentMatch | null) {
+    setOverrideState({ ...overrides, rows: singleRows, installments: { ...overrides.installments, [sourceIndex]: value } });
+    setInstallmentEdit(null);
+  }
+
+  function startInstallmentEdit(sourceIndex: number, current: InstallmentMatch | null) {
+    setInstallmentEdit({
+      index: sourceIndex,
+      current: String(current?.current ?? 1),
+      total: String(current?.total ?? ""),
     });
+  }
+
+  function applyInstallmentEdit() {
+    if (!editing) return;
+    const current = parseInt(editing.current);
+    const total = parseInt(editing.total);
+    if (!(total >= 2 && current >= 1 && current <= total && total <= 120)) {
+      toast.error("Parcela inválida", "Informe a parcela atual e o total (ex: 2 de 6).");
+      return;
+    }
+    const description = singleRows[editing.index].description;
+    const baseName = detectInstallment(description)?.baseName ?? description;
+    setInstallmentOverride(editing.index, { baseName, current, total });
   }
 
   const filteredCategories = categories.filter((c) =>
     typeMode === "signal" ? true : c.type === typeMode
   );
 
-  function getRowCategoryId(index: number) {
-    return categoryOverrides[index] ?? categoryId;
+  function getRowCategoryId(sourceIndex: number) {
+    return overrides.categories[sourceIndex] ?? categoryId;
   }
 
   function handleImport() {
@@ -210,14 +263,14 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
       toast.error("Faltam dados", "Selecione a conta e a categoria padrão antes de importar.");
       return;
     }
-    const missingCategory = mappedRows.some((r, i) => r.valid && !getRowCategoryId(i));
+    const missingCategory = mappedRows.some((r) => r.valid && !getRowCategoryId(r.sourceIndex));
     if (missingCategory) {
       toast.error("Faltam dados", "Alguma linha ficou sem categoria.");
       return;
     }
 
     const rowsToSend = mappedRows
-      .map((r, i) => ({ ...r, categoryId: getRowCategoryId(i) }))
+      .map((r) => ({ ...r, categoryId: getRowCategoryId(r.sourceIndex) }))
       .filter((r) => r.valid)
       .map((r) => ({
         date: formatDateInput(r.date!),
@@ -427,6 +480,9 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
           />
           Detectar compra parcelada (ex: &ldquo;Loja - Parcela 2/6&rdquo;) e gerar as parcelas futuras automaticamente
         </label>
+        <p className="text-[11px] text-text-muted -mt-3 ml-5.5">
+          Alguma compra não foi reconhecida? Use o botão &ldquo;Parcelar&rdquo; na linha dela, na pré-visualização.
+        </p>
 
         {hasRows && (
           <div>
@@ -438,7 +494,8 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               <table className="w-full text-xs">
                 <tbody>
                   {mappedRows.map((r, i) => (
-                    <tr key={i} className={`border-b border-fg/5 last:border-b-0 ${!r.valid ? "opacity-50" : ""}`}>
+                    <Fragment key={i}>
+                    <tr className={`border-b border-fg/5 last:border-b-0 ${!r.valid ? "opacity-50" : ""}`}>
                       <td className="px-3 py-2 font-mono-value text-text-dim whitespace-nowrap">
                         {r.date ? formatDate(r.date) : "—"}
                       </td>
@@ -446,9 +503,9 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                       <td className="px-2 py-2">
                         {r.valid ? (
                           <select
-                            value={getRowCategoryId(i)}
+                            value={getRowCategoryId(r.sourceIndex)}
                             onChange={(e) =>
-                              setCategoryOverride(i, e.target.value)
+                              setCategoryOverride(r.sourceIndex, e.target.value)
                             }
                             className="w-full max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
                           >
@@ -465,6 +522,22 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                       <td className={`px-3 py-2 font-mono-value text-right whitespace-nowrap ${r.type === "receita" ? "text-emerald" : "text-coral"}`}>
                         {r.amount !== null ? formatCurrency(r.amount) : "inválido"}
                       </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-right">
+                        {r.valid && r.isFirst && (
+                          <button
+                            type="button"
+                            onClick={() => startInstallmentEdit(r.sourceIndex, r.installment)}
+                            className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                              r.installment
+                                ? "border-blue/30 bg-blue/10 text-blue hover:bg-blue/20"
+                                : "border-fg/10 text-text-muted hover:text-fg hover:border-fg/30"
+                            }`}
+                            title={r.installment ? "Corrigir parcela" : "Marcar como compra parcelada"}
+                          >
+                            {r.installment ? `${r.installment.current}/${r.installment.total}` : "Parcelar"}
+                          </button>
+                        )}
+                      </td>
                       {inputMode === "manual" && (
                         <td className="px-2 py-2 w-6">
                           {r.manualId !== undefined && (
@@ -480,6 +553,46 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                         </td>
                       )}
                     </tr>
+                    {r.isFirst && editing?.index === r.sourceIndex && (
+                      <tr className="border-b border-fg/5 bg-fg/5">
+                        <td colSpan={inputMode === "manual" ? 6 : 5} className="px-3 py-2">
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-text-dim">
+                            <span>Parcela</span>
+                            <input
+                              value={editing.current}
+                              onChange={(e) => setInstallmentEdit({ ...editing, current: e.target.value })}
+                              inputMode="numeric"
+                              className="w-12 px-1.5 py-1 bg-fg/5 border border-fg/10 rounded text-fg text-center focus:border-blue focus:outline-none"
+                            />
+                            <span>de</span>
+                            <input
+                              value={editing.total}
+                              onChange={(e) => setInstallmentEdit({ ...editing, total: e.target.value })}
+                              onKeyDown={(e) => e.key === "Enter" && applyInstallmentEdit()}
+                              inputMode="numeric"
+                              autoFocus
+                              className="w-12 px-1.5 py-1 bg-fg/5 border border-fg/10 rounded text-fg text-center focus:border-blue focus:outline-none"
+                            />
+                            <button type="button" onClick={applyInstallmentEdit} className="text-blue hover:text-fg cursor-pointer">
+                              Aplicar
+                            </button>
+                            {r.installment && (
+                              <button
+                                type="button"
+                                onClick={() => setInstallmentOverride(r.sourceIndex, null)}
+                                className="text-text-muted hover:text-coral cursor-pointer"
+                              >
+                                Não é parcelada
+                              </button>
+                            )}
+                            <button type="button" onClick={() => setInstallmentEdit(null)} className="text-text-muted hover:text-fg cursor-pointer ml-auto">
+                              Cancelar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
