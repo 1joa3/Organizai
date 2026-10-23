@@ -44,6 +44,7 @@ export default function KpiStrip({
     },
     {
       label: "Patrimônio Investido",
+      shortLabel: "Investido",
       value: formatCurrency(investido || 0),
       color: "text-amber",
       glow: "drop-shadow-[0_0_8px_rgba(255,184,0,0.3)]",
@@ -73,8 +74,16 @@ export default function KpiStrip({
           {/* Subtle top highlight */}
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           
-          <p className="text-xs font-medium text-text-dim uppercase tracking-wider truncate">
-            {kpi.label}
+          <p className="text-xs font-medium text-text-dim uppercase tracking-wider truncate" title={kpi.label}>
+            {"shortLabel" in kpi ? (
+              <>
+                {/* Em 2 colunas o nome completo não cabe */}
+                <span className="@xl:hidden">{kpi.shortLabel}</span>
+                <span className="hidden @xl:inline">{kpi.label}</span>
+              </>
+            ) : (
+              kpi.label
+            )}
           </p>
           <p className={`font-mono-value font-medium mt-2 whitespace-nowrap ${VALUE_SIZE} ${kpi.color} ${kpi.glow}`}>
             {kpi.value}

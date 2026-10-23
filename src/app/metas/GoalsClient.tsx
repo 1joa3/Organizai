@@ -56,7 +56,7 @@ export default function GoalsClient({ goals }: { goals: SerializedGoal[] }) {
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
-          <h1 className="font-display text-4xl text-fg tracking-tight">Metas</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Metas</h1>
           <p className="text-sm text-text-dim mt-1">Planeje e acompanhe seus objetivos</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>Nova Meta</Button>
@@ -73,9 +73,9 @@ export default function GoalsClient({ goals }: { goals: SerializedGoal[] }) {
             className="glass-card p-6 flex flex-col justify-between group"
           >
             <div>
-              <div className="flex justify-between items-start mb-6">
-                <h3 className="font-display text-xl text-fg">{goal.name}</h3>
-                <span className="text-xs text-text-dim uppercase tracking-wider font-medium bg-well px-2 py-1 rounded">
+              <div className="flex flex-wrap justify-between items-start gap-x-3 gap-y-2 mb-6">
+                <h3 className="font-display text-xl text-fg min-w-0 break-words">{goal.name}</h3>
+                <span className="text-xs text-text-dim uppercase tracking-wider font-medium bg-well px-2 py-1 rounded whitespace-nowrap">
                   Alvo: {formatCurrency(Number(goal.targetAmount))}
                 </span>
               </div>

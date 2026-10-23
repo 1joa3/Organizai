@@ -12,7 +12,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { useToast } from "@/components/ui/Toast";
 import { createTransaction, updateTransaction, deleteTransaction, deleteTransactionGroup, createCategory, deleteTransactions, updateTransactionsCategory } from "./actions";
-import { formatCurrency, formatDate, formatDateInput } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatDateShort, formatDateInput } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
 import { getInstallmentInfo } from "@/lib/installments";
 import type { SerializedTransaction } from "@/lib/types";
@@ -346,14 +346,16 @@ export default function TransactionsClient({
     },
   ];
 
+  // No celular a descrição e o valor ficam na primeira linha (com espaço para
+  // o nome inteiro) e categoria, data e ações na segunda.
   function renderMobileItem(t: SerializedTransaction) {
     return (
-      <div className="glass-panel p-4 flex items-center gap-3">
+      <div className="glass-panel p-3.5 flex items-start gap-3">
         <input
           type="checkbox"
           checked={selectedIds.has(t.id)}
           onChange={() => toggleSelect(t.id)}
-          className="w-4 h-4 accent-blue cursor-pointer shrink-0"
+          className="w-4 h-4 mt-3 accent-blue cursor-pointer shrink-0"
           aria-label="Selecionar transação"
         />
         <div
@@ -369,42 +371,47 @@ export default function TransactionsClient({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-fg truncate">{t.description}</p>
-          <p className="text-xs text-text-dim mt-0.5 truncate">
-            {t.category.name} <span className="text-fg/20">•</span> {t.account.name}
-          </p>
-          <p className="text-[11px] text-text-muted font-mono-value mt-0.5">{formatDate(t.date)}</p>
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <span
-            className={`font-mono-value text-sm font-medium ${
-              t.type === "receita" ? "text-emerald drop-shadow-[0_0_8px_rgba(204,255,0,0.3)]" : "text-coral drop-shadow-[0_0_8px_rgba(255,0,85,0.3)]"
-            }`}
-          >
-            {t.type === "receita" ? "+" : "−"}
-            {formatCurrency(Number(t.amount))}
-          </span>
-          <button
-            onClick={() => openEditModal(t)}
-            className="text-text-dim hover:text-blue transition-colors"
-            title="Editar"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => handleDeleteClick(t)}
-            className="text-text-dim hover:text-coral transition-colors"
-            title="Excluir"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-medium text-fg line-clamp-2 break-words min-w-0">{t.description}</p>
+            <span
+              className={`font-mono-value text-sm font-medium whitespace-nowrap shrink-0 ${
+                t.type === "receita" ? "text-emerald drop-shadow-[0_0_8px_rgba(204,255,0,0.3)]" : "text-coral drop-shadow-[0_0_8px_rgba(255,0,85,0.3)]"
+              }`}
+            >
+              {t.type === "receita" ? "+" : "−"}
+              {formatCurrency(Number(t.amount))}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <p className="text-xs text-text-dim truncate min-w-0">
+              {t.category.name} <span className="text-fg/20">•</span>{" "}
+              <span className="font-mono-value text-text-muted">{formatDateShort(t.date)}</span>
+            </p>
+            <div className="flex items-center gap-1 shrink-0 -mr-1.5">
+              <button
+                onClick={() => openEditModal(t)}
+                className="p-1.5 text-text-dim hover:text-blue transition-colors"
+                title="Editar"
+                aria-label="Editar"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleDeleteClick(t)}
+                className="p-1.5 text-text-dim hover:text-coral transition-colors"
+                title="Excluir"
+                aria-label="Excluir"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -416,10 +423,10 @@ export default function TransactionsClient({
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+        className="flex flex-wrap justify-between items-center gap-4"
       >
         <div>
-          <h1 className="font-display text-4xl text-fg tracking-tight">Transações</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Transações</h1>
           <p className="text-sm text-text-dim mt-1">Gerencie suas receitas e despesas</p>
         </div>
         <Button onClick={openCreateModal}>Nova Transação</Button>
@@ -430,11 +437,11 @@ export default function TransactionsClient({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-wrap gap-4 items-center justify-between"
+        className="flex flex-wrap gap-3 sm:gap-4 items-center justify-between"
       >
-        <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
           <PeriodSelector period={period} />
-          <div className="w-48">
+          <div className="w-40 sm:w-48">
             <Select
               options={[
                 { value: "", label: "Todos os tipos" },
@@ -449,7 +456,7 @@ export default function TransactionsClient({
             />
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
           <Button
             variant="glass"
             size="sm"
@@ -472,19 +479,19 @@ export default function TransactionsClient({
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-wrap items-center gap-3 p-3 glass-panel border border-blue/20"
+          className="sticky top-2 z-30 flex flex-wrap items-center gap-2 sm:gap-3 p-3 glass-panel border border-blue/20 shadow-lg"
         >
-          <span className="text-sm text-fg font-medium px-1">
+          <span className="text-sm text-fg font-medium px-1 w-full sm:w-auto">
             {selectedIds.size} selecionada{selectedIds.size > 1 ? "s" : ""}
           </span>
 
-          <div className="flex-1 flex flex-wrap items-center gap-2">
+          <div className="flex-1 basis-full sm:basis-auto flex items-center gap-2 min-w-0">
             {canBulkRecategorize ? (
               <>
                 <select
                   value={bulkCategoryId}
                   onChange={(e) => setBulkCategoryId(e.target.value)}
-                  className="bg-fg/5 border border-fg/10 rounded-lg px-2.5 py-1.5 text-xs text-fg focus:border-blue focus:outline-none cursor-pointer"
+                  className="flex-1 sm:flex-none min-w-0 bg-fg/5 border border-fg/10 rounded-lg px-2.5 py-1.5 text-xs text-fg focus:border-blue focus:outline-none cursor-pointer"
                 >
                   <option value="" className="bg-option">Mudar categoria para...</option>
                   {bulkCategoryOptions.map((c) => (

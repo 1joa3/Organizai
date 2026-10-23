@@ -306,6 +306,24 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
     });
   }
 
+  function installmentButton(r: (typeof mappedRows)[number]) {
+    if (!r.valid || !r.isFirst) return null;
+    return (
+      <button
+        type="button"
+        onClick={() => startInstallmentEdit(r.sourceIndex, r.installment)}
+        className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+          r.installment
+            ? "border-blue/30 bg-blue/10 text-blue hover:bg-blue/20"
+            : "border-fg/10 text-text-muted hover:text-fg hover:border-fg/30"
+        }`}
+        title={r.installment ? "Corrigir parcela" : "Marcar como compra parcelada"}
+      >
+        {r.installment ? `${r.installment.current}/${r.installment.total}` : "Parcelar"}
+      </button>
+    );
+  }
+
   const columnOptions = (parsed?.headers ?? []).map((h, i) => ({
     value: String(i),
     label: h || `Coluna ${i + 1}`,
@@ -323,7 +341,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               inputMode === "csv" ? "bg-blue/15 text-blue border border-blue/30" : "text-text-dim hover:text-fg border border-transparent"
             }`}
           >
-            Importar arquivo CSV
+            Arquivo CSV
           </button>
           <button
             type="button"
@@ -332,7 +350,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               inputMode === "manual" ? "bg-blue/15 text-blue border border-blue/30" : "text-text-dim hover:text-fg border border-transparent"
             }`}
           >
-            Adicionar uma a uma
+            Uma a uma
           </button>
         </div>
 
@@ -496,10 +514,17 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                   {mappedRows.map((r, i) => (
                     <Fragment key={i}>
                     <tr className={`border-b border-fg/5 last:border-b-0 ${!r.valid ? "opacity-50" : ""}`}>
-                      <td className="px-3 py-2 font-mono-value text-text-dim whitespace-nowrap">
+                      <td className="hidden sm:table-cell px-3 py-2 font-mono-value text-text-dim whitespace-nowrap">
                         {r.date ? formatDate(r.date) : "—"}
                       </td>
-                      <td className="px-3 py-2 text-fg truncate max-w-[160px]">{r.description || "—"}</td>
+                      <td className="px-3 py-2 text-fg max-w-[160px]">
+                        <p className="truncate">{r.description || "—"}</p>
+                        {/* No celular a data e o botão de parcela ficam aqui, para a tabela caber na tela */}
+                        <div className="sm:hidden flex items-center gap-2 mt-1">
+                          <span className="font-mono-value text-text-dim">{r.date ? formatDate(r.date) : "—"}</span>
+                          {installmentButton(r)}
+                        </div>
+                      </td>
                       <td className="px-2 py-2">
                         {r.valid ? (
                           <select
@@ -507,7 +532,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                             onChange={(e) =>
                               setCategoryOverride(r.sourceIndex, e.target.value)
                             }
-                            className="w-full max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
+                            className="w-full max-w-[110px] sm:max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
                           >
                             {filteredCategories.map((c) => (
                               <option key={c.id} value={c.id} className="bg-option">
@@ -522,22 +547,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                       <td className={`px-3 py-2 font-mono-value text-right whitespace-nowrap ${r.type === "receita" ? "text-emerald" : "text-coral"}`}>
                         {r.amount !== null ? formatCurrency(r.amount) : "inválido"}
                       </td>
-                      <td className="px-2 py-2 whitespace-nowrap text-right">
-                        {r.valid && r.isFirst && (
-                          <button
-                            type="button"
-                            onClick={() => startInstallmentEdit(r.sourceIndex, r.installment)}
-                            className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
-                              r.installment
-                                ? "border-blue/30 bg-blue/10 text-blue hover:bg-blue/20"
-                                : "border-fg/10 text-text-muted hover:text-fg hover:border-fg/30"
-                            }`}
-                            title={r.installment ? "Corrigir parcela" : "Marcar como compra parcelada"}
-                          >
-                            {r.installment ? `${r.installment.current}/${r.installment.total}` : "Parcelar"}
-                          </button>
-                        )}
-                      </td>
+                      <td className="hidden sm:table-cell px-2 py-2 whitespace-nowrap text-right">{installmentButton(r)}</td>
                       {inputMode === "manual" && (
                         <td className="px-2 py-2 w-6">
                           {r.manualId !== undefined && (
@@ -555,7 +565,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                     </tr>
                     {r.isFirst && editing?.index === r.sourceIndex && (
                       <tr className="border-b border-fg/5 bg-fg/5">
-                        <td colSpan={inputMode === "manual" ? 6 : 5} className="px-3 py-2">
+                        <td colSpan={6} className="px-3 py-2">
                           <div className="flex flex-wrap items-center gap-2 text-[11px] text-text-dim">
                             <span>Parcela</span>
                             <input

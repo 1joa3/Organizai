@@ -361,9 +361,9 @@ export default function DashboardClient({
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-wrap items-center justify-between gap-4"
       >
-        <div className="flex items-baseline gap-4">
-          <h1 className="font-display text-4xl text-fg tracking-tight">Dashboard</h1>
-          <p className="text-sm text-blue uppercase tracking-widest font-medium">{periodLabel}</p>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-blue uppercase tracking-widest font-medium whitespace-nowrap">{periodLabel}</p>
         </div>
         <div className="flex items-center gap-3 w-full @xl/page:w-auto">
           <div className="flex-1 min-w-0 @xl/page:flex-none">

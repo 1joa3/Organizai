@@ -114,7 +114,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
 
       {/* Toast Container */}
-      <div className="fixed top-5 right-5 z-[200] flex flex-col gap-3 pointer-events-none w-[360px]">
+      <div className="fixed top-3 right-3 left-3 sm:top-5 sm:right-5 sm:left-auto z-[200] flex flex-col gap-3 pointer-events-none sm:w-[360px]">
         <AnimatePresence mode="popLayout">
           {toasts.map((t) => (
             <ToastItem key={t.id} toast={t} onDismiss={() => removeToast(t.id)} />
