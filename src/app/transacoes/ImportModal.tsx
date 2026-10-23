@@ -15,7 +15,7 @@ import {
   detectInstallment,
   type InstallmentMatch,
 } from "@/lib/csvImport";
-import { formatCurrency, formatDate, formatDateInput } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatDateShort, formatDateInput } from "@/lib/formatters";
 
 const MAX_ROWS = 5000;
 type TypeMode = "despesa" | "receita" | "signal";
@@ -521,7 +521,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                         <p className="truncate">{r.description || "—"}</p>
                         {/* No celular a data e o botão de parcela ficam aqui, para a tabela caber na tela */}
                         <div className="sm:hidden flex items-center gap-2 mt-1">
-                          <span className="font-mono-value text-text-dim">{r.date ? formatDate(r.date) : "—"}</span>
+                          <span className="font-mono-value text-text-dim whitespace-nowrap">{r.date ? formatDateShort(r.date) : "—"}</span>
                           {installmentButton(r)}
                         </div>
                       </td>
@@ -532,7 +532,7 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                             onChange={(e) =>
                               setCategoryOverride(r.sourceIndex, e.target.value)
                             }
-                            className="w-full max-w-[110px] sm:max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
+                            className="w-full min-w-[88px] max-w-[110px] sm:max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
                           >
                             {filteredCategories.map((c) => (
                               <option key={c.id} value={c.id} className="bg-option">
