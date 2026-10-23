@@ -479,7 +479,7 @@ export default function TransactionsClient({
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="sticky top-2 z-30 flex flex-wrap items-center gap-2 sm:gap-3 p-3 glass-panel border border-blue/20 shadow-lg"
+          className="sticky top-2 z-30 flex flex-wrap items-center gap-2 sm:gap-3 p-3 glass-panel bg-panel! border border-blue/20 shadow-lg"
         >
           <span className="text-sm text-fg font-medium px-1 w-full sm:w-auto">
             {selectedIds.size} selecionada{selectedIds.size > 1 ? "s" : ""}

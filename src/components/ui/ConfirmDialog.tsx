@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "./Button";
 import { ACCENT_CLASS, ACCENT_VAR } from "@/lib/accents";
@@ -56,6 +57,10 @@ const variantConfig = {
   },
 };
 
+function subscribeNothing() {
+  return () => {};
+}
+
 export default function ConfirmDialog({
   isOpen,
   onConfirm,
@@ -69,6 +74,8 @@ export default function ConfirmDialog({
   onExtra,
 }: ConfirmDialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  // false no servidor e na hidratação, true depois — o portal só existe no cliente
+  const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const config = variantConfig[variant];
   const accentClass = ACCENT_CLASS[config.accent];
 
@@ -90,7 +97,11 @@ export default function ConfirmDialog({
     if (e.target === overlayRef.current) onCancel();
   }
 
-  return (
+  // Portal no <body>: o <main> cria um contexto de empilhamento (z-0), e de
+  // dentro dele nenhum z-index passa por cima da barra de navegação do celular
+  if (!isClient) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -144,6 +155,7 @@ export default function ConfirmDialog({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Accent, ACCENT_CLASS, ACCENT_VAR } from "@/lib/accents";
 
@@ -14,6 +15,10 @@ interface ModalProps {
   maxWidth?: string;
 }
 
+function subscribeNothing() {
+  return () => {};
+}
+
 export default function Modal({
   isOpen,
   onClose,
@@ -24,6 +29,8 @@ export default function Modal({
   maxWidth = "max-w-lg",
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  // false no servidor e na hidratação, true depois — o portal só existe no cliente
+  const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const accentClass = ACCENT_CLASS[accent];
 
   useEffect(() => {
@@ -44,7 +51,11 @@ export default function Modal({
     if (e.target === overlayRef.current) onClose();
   }
 
-  return (
+  // Portal no <body>: o <main> cria um contexto de empilhamento (z-0), e de
+  // dentro dele nenhum z-index passa por cima da barra de navegação do celular
+  if (!isClient) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -95,6 +106,7 @@ export default function Modal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
