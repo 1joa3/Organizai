@@ -11,7 +11,7 @@ import PeriodSelector from "@/components/ui/PeriodSelector";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { useToast } from "@/components/ui/Toast";
-import { createTransaction, updateTransaction, deleteTransaction, deleteTransactionGroup, createCategory, deleteTransactions, updateTransactionsCategory } from "./actions";
+import { createTransaction, updateTransaction, deleteTransaction, deleteTransactionGroup, createCategory, createAccount, deleteTransactions, updateTransactionsCategory } from "./actions";
 import { formatCurrency, formatDate, formatDateShort, formatDateInput } from "@/lib/formatters";
 import { exportTransactionsToCSV } from "@/lib/csv";
 import { getInstallmentInfo } from "@/lib/installments";
@@ -85,6 +85,44 @@ export default function TransactionsClient({
     });
   }
 
+  // Nova conta (inline, dentro do modal de transação)
+  const [isAddingAccount, setIsAddingAccount] = useState(false);
+  const [isAccountLoading, setIsAccountLoading] = useState(false);
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountType, setNewAccountType] = useState("corrente");
+
+  function cancelNewAccount() {
+    setIsAddingAccount(false);
+    setNewAccountName("");
+    setNewAccountType("corrente");
+  }
+
+  function handleCreateAccount() {
+    const name = newAccountName.trim();
+    if (!name) return;
+
+    setIsAccountLoading(true);
+    const formData = new FormData();
+    formData.set("name", name);
+    formData.set("type", newAccountType);
+
+    startTransition(async () => {
+      try {
+        const result = await createAccount(formData);
+        if (result?.error) {
+          toast.error("Erro ao criar conta", result.error);
+        } else {
+          toast.success("Conta criada", `"${name}" já está disponível na lista.`);
+          cancelNewAccount();
+        }
+      } catch {
+        toast.error("Erro ao criar conta", "Tente novamente.");
+      } finally {
+        setIsAccountLoading(false);
+      }
+    });
+  }
+
   function openCreateModal() {
     setEditingTransaction(null);
     setSelectedType("despesa");
@@ -102,12 +140,17 @@ export default function TransactionsClient({
     setEditingTransaction(null);
     setIsAddingCategory(false);
     setNewCategoryName("");
+    cancelNewAccount();
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (isAddingCategory) {
       toast.warning("Categoria pendente", "Salve ou cancele a nova categoria antes de continuar.");
+      return;
+    }
+    if (isAddingAccount) {
+      toast.warning("Conta pendente", "Salve ou cancele a nova conta antes de continuar.");
       return;
     }
     setIsLoading(true);
@@ -601,13 +644,66 @@ export default function TransactionsClient({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              name="accountId"
-              label="Conta"
-              required
-              defaultValue={editingTransaction?.accountId}
-              options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-            />
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-text-dim uppercase tracking-wider">
+                  Conta
+                </label>
+                {!isAddingAccount && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingAccount(true)}
+                    className="text-xs text-blue hover:text-fg transition-colors cursor-pointer"
+                  >
+                    + Nova
+                  </button>
+                )}
+              </div>
+
+              {isAddingAccount ? (
+                <div className="p-3 bg-fg/5 border border-fg/10 rounded-lg space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      autoFocus
+                      value={newAccountName}
+                      onChange={(e) => setNewAccountName(e.target.value)}
+                      placeholder="Nome da conta"
+                      className="flex-1 min-w-0 px-3 py-2 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
+                    />
+                    <select
+                      value={newAccountType}
+                      onChange={(e) => setNewAccountType(e.target.value)}
+                      className="px-2 py-2 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg focus:border-blue focus:outline-none cursor-pointer shrink-0"
+                      aria-label="Tipo da conta"
+                    >
+                      <option value="corrente" className="bg-option">Corrente</option>
+                      <option value="poupança" className="bg-option">Poupança</option>
+                      <option value="carteira" className="bg-option">Carteira</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" type="button" onClick={cancelNewAccount}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="button"
+                      loading={isAccountLoading}
+                      onClick={handleCreateAccount}
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  name="accountId"
+                  required
+                  defaultValue={editingTransaction?.accountId}
+                  options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+                />
+              )}
+            </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">

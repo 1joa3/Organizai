@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 import { splitInstallmentAmounts, addMonthsClamped, importInstallmentKey } from "@/lib/installments";
 import {
+  accountSchema,
   categorySchema,
   firstError,
   formToObject,
@@ -145,6 +146,17 @@ export async function deleteTransactionGroup(id: string) {
 export async function getAccounts() {
   const { id: userId } = await requireUser();
   return prisma.account.findMany({ where: { userId }, orderBy: { name: "asc" } });
+}
+
+export async function createAccount(formData: FormData) {
+  const { id: userId } = await requireUser();
+  const parsed = accountSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+
+  const account = await prisma.account.create({ data: { ...parsed.data, userId } });
+
+  revalidate();
+  return { success: true, account };
 }
 
 export async function getCategories(type?: string) {

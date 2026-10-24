@@ -7,6 +7,7 @@ import { z } from "zod";
  */
 
 export const TRANSACTION_TYPES = ["receita", "despesa"] as const;
+export const ACCOUNT_TYPES = ["corrente", "poupança", "carteira"] as const;
 export const ASSET_TYPES = ["renda_fixa", "renda_variavel", "cripto", "fundo"] as const;
 export const MAX_INSTALLMENTS = 120;
 const MAX_AMOUNT = 1_000_000_000;
@@ -108,6 +109,11 @@ export const categorySchema = z.object({
   name: text("um nome para a categoria", 60),
   type: z.enum(TRANSACTION_TYPES, { error: "Tipo de categoria inválido" }),
   color: color.default("#00E5FF"),
+});
+
+export const accountSchema = z.object({
+  name: text("um nome para a conta", 60),
+  type: z.enum(ACCOUNT_TYPES, { error: "Tipo de conta inválido" }),
 });
 
 export const importSchema = z.object({

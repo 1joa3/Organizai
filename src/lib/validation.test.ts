@@ -5,6 +5,7 @@ import {
   investmentSchema,
   goalSchema,
   idListSchema,
+  accountSchema,
   formToObject,
   firstError,
   calendarDate,
@@ -119,5 +120,20 @@ describe("idListSchema", () => {
     expect(idListSchema.safeParse([]).success).toBe(false);
     expect(idListSchema.safeParse("abc").success).toBe(false);
     expect(idListSchema.parse(["a", "b"])).toEqual(["a", "b"]);
+  });
+});
+
+describe("accountSchema", () => {
+  it("aceita nome e tipo válidos", () => {
+    expect(accountSchema.parse(form({ name: " Nubank ", type: "corrente" }))).toEqual({ name: "Nubank", type: "corrente" });
+  });
+
+  it.each([
+    [{ name: "", type: "corrente" }, "Informe um nome para a conta"],
+    [{ name: "Nubank", type: "investimento" }, "Tipo de conta inválido"],
+  ])("rejeita %o", (fields, message) => {
+    const r = accountSchema.safeParse(form(fields));
+    expect(r.success).toBe(false);
+    if (!r.success) expect(firstError(r.error)).toBe(message);
   });
 });
