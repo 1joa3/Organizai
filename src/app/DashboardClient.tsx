@@ -16,10 +16,13 @@ import ResizableBlock from "@/components/dashboard/ResizableBlock";
 import {
   type DashboardBlockId,
   type DashboardLayout,
+  type DropPosition,
   blockLabel,
   defaultLayout,
+  dropPosition,
   isDefaultLayout,
   moveBlock,
+  moveBlockTo,
   saveLayoutCookie,
   setBlockHeight,
   setBlockHidden,
@@ -126,6 +129,51 @@ export default function DashboardClient({
 
   const visible = visibleBlocks(layout);
 
+  // Arrastar e soltar: o bloco arrastado, o alvo sob o ponteiro e o ponteiro
+  // (para a etiqueta que o acompanha). Só salva ao soltar.
+  const [reorder, setReorder] = useState<{
+    id: DashboardBlockId;
+    target: { id: DashboardBlockId; position: DropPosition; axis: "horizontal" | "vertical" } | null;
+    pointer: { x: number; y: number };
+  } | null>(null);
+  const pointerY = useRef(0);
+  const reordering = reorder !== null;
+
+  // Perto da borda de cima/baixo da janela, rola sozinho enquanto arrasta
+  useEffect(() => {
+    if (!reordering) return;
+    const EDGE = 80;
+    let frame = requestAnimationFrame(function tick() {
+      const y = pointerY.current;
+      const speed = y < EDGE ? -(EDGE - y) / 4 : y > window.innerHeight - EDGE ? (y - window.innerHeight + EDGE) / 4 : 0;
+      if (speed) window.scrollBy(0, speed);
+      frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [reordering]);
+
+  function reorderMove(id: DashboardBlockId, pointer: { x: number; y: number }) {
+    pointerY.current = pointer.y;
+    const grid = gridRef.current;
+    const el = document.elementFromPoint(pointer.x, pointer.y)?.closest<HTMLElement>("[data-block-id]");
+    setReorder((prev) => {
+      if (!prev) return prev;
+      // No vão entre blocos, mantém o último alvo; sobre o próprio bloco, nenhum
+      if (!el || !grid?.contains(el)) return { ...prev, pointer };
+      const targetId = el.dataset.blockId as DashboardBlockId;
+      if (targetId === id) return { ...prev, pointer, target: null };
+      const rect = el.getBoundingClientRect();
+      // Bloco que ocupa (quase) a linha toda: cai acima ou abaixo dele
+      const axis = rect.width < grid.getBoundingClientRect().width * 0.9 ? "horizontal" : "vertical";
+      return { ...prev, pointer, target: { id: targetId, position: dropPosition(pointer, rect, axis === "horizontal"), axis } };
+    });
+  }
+
+  function reorderEnd(drop: boolean) {
+    if (drop && reorder?.target) updateLayout(moveBlockTo(layout, reorder.id, reorder.target.id, reorder.target.position));
+    setReorder(null);
+  }
+
   function blockProps(id: DashboardBlockId) {
     const index = visible.indexOf(id);
     return {
@@ -142,6 +190,15 @@ export default function DashboardClient({
       onMoveBefore: index > 0 ? () => updateLayout(moveBlock(layout, id, -1)) : undefined,
       onMoveAfter: index < visible.length - 1 ? () => updateLayout(moveBlock(layout, id, 1)) : undefined,
       onHide: () => updateLayout(setBlockHidden(layout, id, true)),
+      blockId: id,
+      onReorderStart: (pointer: { x: number; y: number }) => {
+        pointerY.current = pointer.y;
+        setReorder({ id, target: null, pointer });
+      },
+      onReorderMove: (pointer: { x: number; y: number }) => reorderMove(id, pointer),
+      onReorderEnd: reorderEnd,
+      reorder: reorder?.id === id ? ("dragging" as const) : reorder?.target?.id === id ? reorder.target.position : null,
+      dropAxis: reorder?.target?.id === id ? reorder.target.axis : ("horizontal" as const),
     };
   }
 
@@ -410,8 +467,8 @@ export default function DashboardClient({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>
                   {wide
-                    ? "Use a barra de cada bloco para reordenar, mudar a largura ou esconder. Arraste a borda direita para a largura, ou o canto inferior para largura e altura juntas."
-                    : "Use a barra de cada bloco para reordenar ou esconder, e arraste o canto inferior para mudar a altura. Em telas mais largas dá para mudar a largura também."}
+                    ? "Segure a alça ⠿ de um bloco e arraste para mudá-lo de lugar. Arraste a borda direita para a largura, ou o canto inferior para largura e altura juntas. A barra do bloco também tem setas, largura e esconder."
+                    : "Segure a alça ⠿ de um bloco e arraste para mudá-lo de lugar, e arraste o canto inferior para mudar a altura. Em telas mais largas dá para mudar a largura também."}
                 </span>
                 {!isDefaultLayout(layout) && (
                   <button
@@ -459,6 +516,16 @@ export default function DashboardClient({
           </div>
         )}
       </div>
+
+      {/* Etiqueta que acompanha o ponteiro enquanto arrasta um bloco */}
+      {reorder && (
+        <div
+          className="fixed z-50 pointer-events-none px-3 py-1.5 rounded-lg bg-blue text-bg text-xs font-semibold shadow-[0_8px_24px_-8px_var(--shadow)]"
+          style={{ left: reorder.pointer.x + 14, top: reorder.pointer.y + 14 }}
+        >
+          {blockLabel(reorder.id)}
+        </div>
+      )}
 
       <CategoryDetailsModal
         isOpen={detailOpen}

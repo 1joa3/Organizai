@@ -147,6 +147,40 @@ export function moveBlock(layout: DashboardLayout, id: DashboardBlockId, delta: 
   return { ...layout, order };
 }
 
+export type DropPosition = "before" | "after";
+
+/**
+ * Arrastar e soltar: tira o bloco do lugar e o põe antes ou depois do bloco
+ * alvo. Soltar sobre si mesmo (ou num lugar que não muda nada) não altera.
+ */
+export function moveBlockTo(
+  layout: DashboardLayout,
+  id: DashboardBlockId,
+  targetId: DashboardBlockId,
+  position: DropPosition
+): DashboardLayout {
+  if (id === targetId) return layout;
+  const order = layout.order.filter((b) => b !== id);
+  const at = order.indexOf(targetId);
+  if (at === -1) return layout;
+  order.splice(position === "before" ? at : at + 1, 0, id);
+  return order.every((b, i) => b === layout.order[i]) ? layout : { ...layout, order };
+}
+
+/**
+ * Em que lado do bloco alvo o arrastado vai cair: blocos que dividem a linha
+ * com outros usam a metade esquerda/direita; os que ocupam a linha toda, a
+ * metade de cima/baixo.
+ */
+export function dropPosition(
+  pointer: { x: number; y: number },
+  rect: { left: number; top: number; width: number; height: number },
+  horizontal: boolean
+): DropPosition {
+  const before = horizontal ? pointer.x < rect.left + rect.width / 2 : pointer.y < rect.top + rect.height / 2;
+  return before ? "before" : "after";
+}
+
 export function setBlockSpan(layout: DashboardLayout, id: DashboardBlockId, span: number): DashboardLayout {
   return { ...layout, spans: { ...layout.spans, [id]: clampSpan(span) } };
 }

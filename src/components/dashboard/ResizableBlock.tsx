@@ -9,6 +9,7 @@ import {
   clampHeight,
   clampSpan,
   spanFromPointer,
+  type DropPosition,
 } from "@/lib/dashboardLayout";
 
 // Classes escritas por extenso para o Tailwind gerar todas. As larguras
@@ -33,6 +34,8 @@ function spanClass(span: number) {
 }
 
 interface ResizableBlockProps {
+  /** Vai no data-block-id, para o Dashboard achar o bloco sob o ponteiro */
+  blockId: string;
   label: string;
   span: number;
   /** Altura mínima escolhida, em px; ausente = do tamanho do conteúdo */
@@ -48,6 +51,15 @@ interface ResizableBlockProps {
   onMoveBefore?: () => void;
   onMoveAfter?: () => void;
   onHide: () => void;
+  /** Arrastar e soltar para reordenar (coordenadas do ponteiro na tela) */
+  onReorderStart: (pointer: { x: number; y: number }) => void;
+  onReorderMove: (pointer: { x: number; y: number }) => void;
+  /** drop false = cancelado (Esc) */
+  onReorderEnd: (drop: boolean) => void;
+  /** "dragging" = este é o bloco arrastado; before/after = vai cair ao lado deste */
+  reorder: "dragging" | DropPosition | null;
+  /** Lado em que o indicador de soltar aparece: esquerda/direita ou cima/baixo */
+  dropAxis: "horizontal" | "vertical";
   children: React.ReactNode;
 }
 
@@ -69,7 +81,8 @@ type DragMode = "width" | "corner";
 
 /**
  * Item do grid do Dashboard. No modo de edição mostra o contorno e uma barra
- * com o nome do bloco, setas para mudar a ordem, atalhos de largura, altura
+ * com uma alça para arrastar o bloco a outra posição, o nome, setas para
+ * mudar a ordem, atalhos de largura, altura
  * automática e o botão de esconder. Duas alças:
  * - borda direita (grid largo): arrasta a largura; setas ← → no teclado;
  * - canto inferior direito: arrasta largura e altura juntas, como uma
@@ -78,6 +91,7 @@ type DragMode = "width" | "corner";
  * para ocupar o espaço extra.
  */
 export default function ResizableBlock({
+  blockId,
   label,
   span,
   height,
@@ -88,6 +102,11 @@ export default function ResizableBlock({
   onMoveBefore,
   onMoveAfter,
   onHide,
+  onReorderStart,
+  onReorderMove,
+  onReorderEnd,
+  reorder,
+  dropAxis,
   children,
 }: ResizableBlockProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -139,6 +158,30 @@ export default function ResizableBlock({
     onResizeEnd(next);
   }
 
+  // A alça de arrastar captura o ponteiro: o Dashboard acompanha onde ele
+  // está e decide onde o bloco cai.
+  const reorderEvents = {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      e.currentTarget.focus();
+      onReorderStart({ x: e.clientX, y: e.clientY });
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (reorder === "dragging") onReorderMove({ x: e.clientX, y: e.clientY });
+    },
+    onPointerUp: () => {
+      if (reorder === "dragging") onReorderEnd(true);
+    },
+    onPointerCancel: () => {
+      if (reorder === "dragging") onReorderEnd(false);
+    },
+    onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Escape" && reorder === "dragging") onReorderEnd(false);
+    },
+  };
+
   const handleEvents = {
     onPointerDown: handlePointerDown,
     onPointerMove: handlePointerMove,
@@ -150,8 +193,11 @@ export default function ResizableBlock({
   return (
     <div
       ref={ref}
+      data-block-id={blockId}
       // Na edição, a barra ganha uma faixa própria acima do conteúdo
-      className={`relative ${spanClass(span)} transition-[grid-column,padding] duration-200 ${editing ? "pt-12" : ""}`}
+      className={`relative ${spanClass(span)} transition-[grid-column,padding,opacity] duration-200 ${editing ? "pt-12" : ""} ${
+        reorder === "dragging" ? "opacity-40" : ""
+      }`}
     >
       <div
         ref={contentRef}
@@ -168,9 +214,20 @@ export default function ResizableBlock({
         <>
           <div
             className={`absolute inset-0 rounded-xl border-2 border-dashed pointer-events-none transition-colors ${
-              dragging ? "border-blue bg-blue/5" : "border-fg/20"
+              dragging || reorder === "dragging" ? "border-blue bg-blue/5" : "border-fg/20"
             }`}
           />
+
+          {/* Onde o bloco arrastado vai cair: uma barra no vão ao lado deste */}
+          {(reorder === "before" || reorder === "after") && (
+            <div
+              className={`absolute z-30 rounded-full bg-blue shadow-[0_0_12px_var(--blue)] pointer-events-none ${
+                dropAxis === "horizontal"
+                  ? `top-0 bottom-0 w-1 ${reorder === "before" ? "-left-2.5 sm:-left-3.5" : "-right-2.5 sm:-right-3.5"}`
+                  : `left-0 right-0 h-1 ${reorder === "before" ? "-top-2.5 sm:-top-3.5" : "-bottom-2.5 sm:-bottom-3.5"}`
+              }`}
+            />
+          )}
 
           {/* Barra de edição */}
           <div
@@ -178,7 +235,25 @@ export default function ResizableBlock({
             aria-label={`Ajustar ${label}`}
             className="absolute top-1.5 inset-x-1.5 z-10 flex items-center gap-1 p-1 rounded-lg bg-panel border border-fg/15 shadow-[0_8px_24px_-8px_var(--shadow)]"
           >
-            <span className="px-1.5 text-xs font-medium text-fg truncate min-w-0 flex-1">{label}</span>
+            <div
+              {...reorderEvents}
+              tabIndex={-1}
+              title="Arraste para mudar o bloco de lugar"
+              aria-label={`Arrastar ${label} para outra posição`}
+              className={`${toolButton} touch-none focus:outline-none ${
+                reorder === "dragging" ? "cursor-grabbing text-blue bg-blue/10" : "cursor-grab"
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <circle cx="9" cy="6" r="1.6" />
+                <circle cx="15" cy="6" r="1.6" />
+                <circle cx="9" cy="12" r="1.6" />
+                <circle cx="15" cy="12" r="1.6" />
+                <circle cx="9" cy="18" r="1.6" />
+                <circle cx="15" cy="18" r="1.6" />
+              </svg>
+            </div>
+            <span className="px-1 text-xs font-medium text-fg truncate min-w-0 flex-1">{label}</span>
 
             <button type="button" onClick={onMoveBefore} disabled={!onMoveBefore} aria-label={`Mover ${label} para antes`} title="Mover para antes" className={toolButton}>
               <svg {...iconProps}>{wide ? <path d="M15 18l-6-6 6-6" /> : <path d="M18 15l-6-6-6 6" />}</svg>

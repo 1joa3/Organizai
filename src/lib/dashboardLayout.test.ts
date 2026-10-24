@@ -6,6 +6,8 @@ import {
   isDefaultLayout,
   visibleBlocks,
   moveBlock,
+  moveBlockTo,
+  dropPosition,
   setBlockSpan,
   setBlockHidden,
   setBlockHeight,
@@ -61,6 +63,43 @@ describe("moveBlock", () => {
     const layout = defaultLayout();
     expect(moveBlock(layout, "kpis", -1)).toBe(layout);
     expect(moveBlock(layout, "recentes", 1)).toBe(layout);
+  });
+});
+
+describe("moveBlockTo", () => {
+  it("põe o bloco antes ou depois do alvo", () => {
+    const layout = defaultLayout();
+    expect(moveBlockTo(layout, "recentes", "saldo", "before").order.slice(0, 3)).toEqual(["kpis", "recentes", "saldo"]);
+    expect(moveBlockTo(layout, "kpis", "metas", "after").order.slice(-3)).toEqual(["metas", "kpis", "recentes"]);
+  });
+
+  it("mantém larguras, alturas e escondidos", () => {
+    const layout = setBlockHidden(setBlockSpan(defaultLayout(), "metas", 8), "dividas", true);
+    const moved = moveBlockTo(layout, "metas", "kpis", "before");
+    expect(moved.order[0]).toBe("metas");
+    expect(moved.spans).toEqual(layout.spans);
+    expect(moved.hidden).toEqual(["dividas"]);
+  });
+
+  it("devolve o mesmo layout quando nada muda", () => {
+    const layout = defaultLayout();
+    expect(moveBlockTo(layout, "saldo", "saldo", "after")).toBe(layout);
+    expect(moveBlockTo(layout, "saldo", "patrimonio", "before")).toBe(layout);
+    expect(moveBlockTo(layout, "saldo", "kpis", "after")).toBe(layout);
+  });
+});
+
+describe("dropPosition", () => {
+  const rect = { left: 100, top: 100, width: 200, height: 100 };
+
+  it("usa a metade esquerda/direita quando o bloco divide a linha", () => {
+    expect(dropPosition({ x: 150, y: 190 }, rect, true)).toBe("before");
+    expect(dropPosition({ x: 250, y: 110 }, rect, true)).toBe("after");
+  });
+
+  it("usa a metade de cima/baixo quando o bloco ocupa a linha toda", () => {
+    expect(dropPosition({ x: 290, y: 120 }, rect, false)).toBe("before");
+    expect(dropPosition({ x: 110, y: 180 }, rect, false)).toBe("after");
   });
 });
 
