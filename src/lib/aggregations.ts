@@ -137,6 +137,18 @@ export async function getRecentTransactions(userId: string, limit = 5) {
   });
 }
 
+/** Transações do período, mais recentes primeiro (tela de transações) */
+export async function getTransactionsInRange(userId: string, { start, end }: DateRange) {
+  return prisma.transaction.findMany({
+    where: { userId, date: { gte: start, lt: end } },
+    orderBy: { date: "desc" },
+    include: {
+      category: { select: { name: true, color: true, icon: true } },
+      account: { select: { name: true } },
+    },
+  });
+}
+
 export async function getGoalsSummary(userId: string) {
   return prisma.goal.findMany({
     where: { userId },

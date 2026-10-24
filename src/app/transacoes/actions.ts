@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 import { splitInstallmentAmounts, addMonthsClamped, importInstallmentKey } from "@/lib/installments";
-import type { DateRange } from "@/lib/period";
 import {
   categorySchema,
   firstError,
@@ -141,36 +140,6 @@ export async function deleteTransactionGroup(id: string) {
     console.error("Error deleting transaction group:", error);
     return { error: "Erro interno ao tentar excluir o grupo de parcelas." };
   }
-}
-
-export async function getTransactions(filters?: {
-  range?: DateRange;
-  categoryId?: string;
-  type?: string;
-}) {
-  const { id: userId } = await requireUser();
-  const where: Record<string, unknown> = { userId };
-
-  if (filters?.range) {
-    where.date = { gte: filters.range.start, lt: filters.range.end };
-  }
-
-  if (filters?.categoryId) {
-    where.categoryId = filters.categoryId;
-  }
-
-  if (filters?.type) {
-    where.type = filters.type;
-  }
-
-  return prisma.transaction.findMany({
-    where,
-    orderBy: { date: "desc" },
-    include: {
-      category: { select: { name: true, color: true, icon: true } },
-      account: { select: { name: true } },
-    },
-  });
 }
 
 export async function getAccounts() {

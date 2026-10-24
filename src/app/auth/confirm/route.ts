@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/safeNext";
 
 /**
  * Destino dos links enviados por e-mail (confirmação de cadastro e
@@ -9,8 +10,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
-  const nextParam = searchParams.get("next") ?? "/";
-  const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/";
+  const next = safeNext(searchParams.get("next"));
 
   const supabase = await createSupabaseServerClient();
   const code = searchParams.get("code");

@@ -1,7 +1,9 @@
-import { getTransactions, getAccounts, getCategories } from "./actions";
+import { getAccounts, getCategories } from "./actions";
 import TransactionsClient from "./TransactionsClient";
 import { cookies } from "next/headers";
 import { PERIOD_COOKIE, resolvePeriod, periodRange, formatPeriod } from "@/lib/period";
+import { requireUser } from "@/lib/dal";
+import { getTransactionsInRange } from "@/lib/aggregations";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +12,13 @@ interface PageProps {
 }
 
 export default async function TransacoesPage({ searchParams }: PageProps) {
+  const { id: userId } = await requireUser();
   const params = await searchParams;
   const cookieStore = await cookies();
   const period = resolvePeriod(params, cookieStore.get(PERIOD_COOKIE)?.value);
 
   const [transactions, accounts, categories] = await Promise.all([
-    getTransactions({ range: periodRange(period) }),
+    getTransactionsInRange(userId, periodRange(period)),
     getAccounts(),
     getCategories(),
   ]);

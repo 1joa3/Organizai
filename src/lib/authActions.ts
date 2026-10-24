@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServerClient } from "./supabase/server";
+import { safeNext } from "./safeNext";
 
 export interface AuthState {
   error?: string;
@@ -44,19 +45,20 @@ function authErrorMessage(error: { code?: string; message: string }): string {
   }
 }
 
-/** Endereço do site, para os links dos e-mails de confirmação e de recuperação. */
+/**
+ * Endereço do site, para os links dos e-mails de confirmação e de recuperação.
+ * Em produção nunca vem dos headers da requisição: um `X-Forwarded-Host`
+ * forjado faria os e-mails apontarem para o site de um atacante.
+ */
 async function siteOrigin() {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  // Definida automaticamente pela Vercel em todo deploy
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.NODE_ENV === "production") throw new Error("Defina NEXT_PUBLIC_SITE_URL em produção");
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
   return `${proto}://${host}`;
-}
-
-/** Só aceita caminhos internos em `next` (evita redirecionar para outro site). */
-function safeNext(value: FormDataEntryValue | null) {
-  const next = typeof value === "string" ? value : "";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
 }
 
 export async function signIn(_prev: AuthState, formData: FormData): Promise<AuthState> {
