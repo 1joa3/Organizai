@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HeroSaldo from "@/components/dashboard/HeroSaldo";
 import KpiStrip from "@/components/dashboard/KpiStrip";
@@ -77,6 +77,8 @@ interface Props {
   layout: DashboardLayout;
 }
 
+const noopSubscribe = () => () => {};
+
 export default function DashboardClient({
   monthlyTotals,
   categoryReport,
@@ -91,6 +93,12 @@ export default function DashboardClient({
   layout: initialLayout,
 }: Props) {
   const [layout, setLayout] = useState(() => readLayoutCookie() ?? initialLayout);
+  // Verdadeiro só no navegador (no servidor e na hidratação, falso)
+  const masonry = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false
+  );
   const [editing, setEditing] = useState(false);
   const [categoryView, setCategoryView] = useState<"distribuicao" | "evolucao">("distribuicao");
   const [detailCategoryId, setDetailCategoryId] = useState<string | null>(null);
@@ -183,6 +191,7 @@ export default function DashboardClient({
       height: layout.heights[id],
       editing,
       wide,
+      masonry,
       // Durante o arraste só pré-visualiza; salva ao soltar
       onResize: (size: { span: number; height: number | null }) =>
         setLayout((prev) => setBlockHeight(setBlockSpan(prev, id, size.span), id, size.height)),
@@ -504,7 +513,14 @@ export default function DashboardClient({
 
       {/* Grid principal: blocos visíveis na ordem escolhida */}
       <div ref={gridRef} className="@container/dash">
-        <div className="grid grid-cols-12 gap-4 sm:gap-6">
+        {/* Blocos alinhados pelo topo, cada um com a própria altura. No
+            navegador, o grid passa a linhas finas e cada bloco ocupa as que
+            precisa: um bloco baixo não deixa buraco nem estica o vizinho. */}
+        <div
+          className={`grid grid-cols-12 items-start ${
+            masonry ? "gap-x-4 sm:gap-x-6 auto-rows-[4px]" : "gap-4 sm:gap-6"
+          }`}
+        >
           {visible.map((id) => (
             <ResizableBlock key={id} {...blockProps(id)}>
               {blockContent[id]}
