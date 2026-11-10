@@ -51,7 +51,7 @@ export default function DonutCategories({ data, totalChange, onDetails }: DonutC
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full min-h-56 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
+      <div className="flex items-center justify-center h-full min-h-[var(--chart-min,14rem)] text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Sem dados para exibir
       </div>
     );

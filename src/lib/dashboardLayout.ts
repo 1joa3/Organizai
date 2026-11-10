@@ -1,26 +1,28 @@
 /**
  * Layout do Dashboard: ordem dos blocos, quais estão escondidos, a largura
- * de cada um (em colunas de um grid de 12) e a altura, quando escolhida.
+ * de cada um (em colunas de um grid de 24) e a altura, quando escolhida.
  * Salvo num cookie para o servidor já renderizar do jeito escolhido.
- * Formato: os blocos na ordem, `id:largura` ou `id:largura:altura`, com `!`
- * na frente dos escondidos — `kpis:12,!saldo:5,patrimonio:7:420,...`.
- * Os formatos antigos (sem ordem, sem `!`, sem altura) continuam aceitos.
+ * Formato: `2|` e os blocos na ordem, `id:largura` ou `id:largura:altura`,
+ * com `!` na frente dos escondidos — `2|kpis:24,!saldo:10,patrimonio:14:420`.
+ * Sem o `2|`, é o formato antigo, com larguras em 12 colunas (dobradas na
+ * leitura); os formatos ainda mais antigos (sem ordem, sem `!`, sem altura)
+ * continuam aceitos.
  *
- * As larguras valem quando a área do Dashboard é larga (12 colunas). Mais
+ * As larguras valem quando a área do Dashboard é larga (24 colunas). Mais
  * estreita, os blocos pequenos dividem a linha em dois e o resto ocupa a
  * largura toda; no celular, tudo um embaixo do outro.
  */
 export const DASHBOARD_LAYOUT_COOKIE = "dash_layout";
 
 export const DASHBOARD_BLOCKS = [
-  { id: "kpis", label: "Indicadores", defaultSpan: 12 },
-  { id: "saldo", label: "Saldo", defaultSpan: 5 },
-  { id: "patrimonio", label: "Evolução Patrimonial", defaultSpan: 7 },
-  { id: "dividas", label: "Quitação de Dívidas", defaultSpan: 12 },
-  { id: "categorias", label: "Despesas por Categoria", defaultSpan: 4 },
-  { id: "parceladas", label: "Despesas Parceladas", defaultSpan: 4 },
-  { id: "metas", label: "Metas", defaultSpan: 4 },
-  { id: "recentes", label: "Transações Recentes", defaultSpan: 4 },
+  { id: "kpis", label: "Indicadores", defaultSpan: 24 },
+  { id: "saldo", label: "Saldo", defaultSpan: 10 },
+  { id: "patrimonio", label: "Evolução Patrimonial", defaultSpan: 14 },
+  { id: "dividas", label: "Quitação de Dívidas", defaultSpan: 24 },
+  { id: "categorias", label: "Despesas por Categoria", defaultSpan: 8 },
+  { id: "parceladas", label: "Despesas Parceladas", defaultSpan: 8 },
+  { id: "metas", label: "Metas", defaultSpan: 8 },
+  { id: "recentes", label: "Transações Recentes", defaultSpan: 8 },
 ] as const;
 
 export type DashboardBlockId = (typeof DASHBOARD_BLOCKS)[number]["id"];
@@ -29,27 +31,32 @@ export interface DashboardLayout {
   /** Todos os blocos, na ordem de exibição (inclusive os escondidos) */
   order: DashboardBlockId[];
   spans: Record<DashboardBlockId, number>;
-  /** Altura mínima em px; ausente = do tamanho do conteúdo */
+  /** Altura exata em px (o que não couber rola); ausente = do tamanho do conteúdo */
   heights: Partial<Record<DashboardBlockId, number>>;
   hidden: DashboardBlockId[];
 }
 
-export const MIN_SPAN = 3;
-export const MAX_SPAN = 12;
+/** Largura: de 1/6 (4 colunas) à linha toda (24) */
+export const MIN_SPAN = 4;
+export const MAX_SPAN = 24;
 
-/** Altura escolhida: de 120 a 1200px, em passos de 10px */
-export const MIN_HEIGHT = 120;
+/** Prefixo do formato atual do cookie (larguras em 24 colunas) */
+const FORMAT_PREFIX = "2|";
+
+/** Altura escolhida: de 80 a 1200px, em passos de 10px */
+export const MIN_HEIGHT = 80;
 export const MAX_HEIGHT = 1200;
 export const HEIGHT_STEP = 10;
 
 /** Atalhos de largura do modo de edição */
 export const SPAN_PRESETS = [
-  { span: 3, label: "¼" },
-  { span: 4, label: "⅓" },
-  { span: 6, label: "½" },
-  { span: 8, label: "⅔" },
-  { span: 9, label: "¾" },
-  { span: 12, label: "Inteiro" },
+  { span: 4, label: "⅙" },
+  { span: 6, label: "¼" },
+  { span: 8, label: "⅓" },
+  { span: 12, label: "½" },
+  { span: 16, label: "⅔" },
+  { span: 18, label: "¾" },
+  { span: 24, label: "Inteiro" },
 ] as const;
 
 const BLOCK_IDS = DASHBOARD_BLOCKS.map((b) => b.id) as DashboardBlockId[];
@@ -88,16 +95,21 @@ export function parseLayout(value: string | undefined): DashboardLayout {
   const layout = defaultLayout();
   if (!value) return layout;
 
+  // Formato antigo: larguras em 12 colunas, que viram o dobro em 24
+  const current = value.startsWith(FORMAT_PREFIX);
+  const spanScale = current ? 1 : 2;
+  const body = current ? value.slice(FORMAT_PREFIX.length) : value;
+
   const order: DashboardBlockId[] = [];
   const hidden: DashboardBlockId[] = [];
-  for (const entry of value.split(",")) {
+  for (const entry of body.split(",")) {
     const [rawId, spanStr, heightStr] = entry.split(":");
     const isHidden = rawId?.startsWith("!");
     const id = isHidden ? rawId.slice(1) : rawId;
     if (!id || !isBlockId(id) || order.includes(id)) continue;
     order.push(id);
     if (isHidden) hidden.push(id);
-    const span = Number(spanStr);
+    const span = Number(spanStr) * spanScale;
     if (Number.isInteger(span) && span >= MIN_SPAN && span <= MAX_SPAN) layout.spans[id] = span;
     const height = Number(heightStr);
     if (heightStr && Number.isInteger(height) && height >= MIN_HEIGHT && height <= MAX_HEIGHT) {
@@ -115,7 +127,7 @@ export function parseLayout(value: string | undefined): DashboardLayout {
 }
 
 export function formatLayout(layout: DashboardLayout): string {
-  return layout.order
+  return FORMAT_PREFIX + layout.order
     .map((id) => {
       const height = layout.heights[id];
       return `${layout.hidden.includes(id) ? "!" : ""}${id}:${layout.spans[id]}${height ? `:${height}` : ""}`;

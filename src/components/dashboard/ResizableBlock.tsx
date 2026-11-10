@@ -16,7 +16,6 @@ import {
 // valem quando o grid (container "dash") tem ≥ 56rem, não pela tela: assim o
 // menu lateral aberto não espreme os blocos.
 const SPAN_CLASS: Record<number, string> = {
-  3: "@4xl/dash:col-span-3",
   4: "@4xl/dash:col-span-4",
   5: "@4xl/dash:col-span-5",
   6: "@4xl/dash:col-span-6",
@@ -26,11 +25,28 @@ const SPAN_CLASS: Record<number, string> = {
   10: "@4xl/dash:col-span-10",
   11: "@4xl/dash:col-span-11",
   12: "@4xl/dash:col-span-12",
+  13: "@4xl/dash:col-span-13",
+  14: "@4xl/dash:col-span-14",
+  15: "@4xl/dash:col-span-15",
+  16: "@4xl/dash:col-span-16",
+  17: "@4xl/dash:col-span-17",
+  18: "@4xl/dash:col-span-18",
+  19: "@4xl/dash:col-span-19",
+  20: "@4xl/dash:col-span-20",
+  21: "@4xl/dash:col-span-21",
+  22: "@4xl/dash:col-span-22",
+  23: "@4xl/dash:col-span-23",
+  24: "@4xl/dash:col-span-24",
 };
 
 /** No grid médio (≥ 42rem), blocos de até 1/3 dividem a linha em dois. */
 function spanClass(span: number) {
-  return `col-span-12 ${span <= 4 ? "@2xl/dash:col-span-6" : ""} ${SPAN_CLASS[span]}`;
+  return `col-span-24 ${span <= 8 ? "@2xl/dash:col-span-12" : ""} ${SPAN_CLASS[span]}`;
+}
+
+/** Largura como o usuário entende: fração conhecida ou porcentagem da linha. */
+function spanLabel(span: number) {
+  return SPAN_PRESETS.find((p) => p.span === span)?.label ?? `${Math.round((span / MAX_SPAN) * 100)}%`;
 }
 
 interface ResizableBlockProps {
@@ -38,7 +54,7 @@ interface ResizableBlockProps {
   blockId: string;
   label: string;
   span: number;
-  /** Altura mínima escolhida, em px; ausente = do tamanho do conteúdo */
+  /** Altura escolhida, em px (o que não couber rola); ausente = do tamanho do conteúdo */
   height?: number;
   editing: boolean;
   /** Grid largo o bastante para as larguras valerem (12 colunas) */
@@ -96,8 +112,8 @@ export const DASH_ROW = 4;
  * - borda direita (grid largo): arrasta a largura; setas ← → no teclado;
  * - canto inferior direito: arrasta largura e altura juntas, como uma
  *   janela (no grid estreito, só a altura); setas ← → ↑ ↓ no teclado.
- * A altura é mínima: o bloco nunca corta o conteúdo, e os gráficos crescem
- * para ocupar o espaço extra.
+ * Com altura escolhida, o bloco fica exatamente dela: os gráficos crescem ou
+ * encolhem para caber, e o que ainda não couber rola dentro do cartão.
  */
 export default function ResizableBlock({
   blockId,
@@ -143,29 +159,41 @@ export default function ResizableBlock({
   // Cada alça diz qual é pelo data-mode
   const modeOf = (el: HTMLElement) => el.dataset.mode as DragMode;
 
+  // O arraste em andamento e o último tamanho vão também em refs: os eventos
+  // de ponteiro podem chegar antes de o React redesenhar (arraste rápido)
+  const dragRef = useRef<{ mode: DragMode; size: { span: number; height: number | null } } | null>(null);
+
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    setDragging(modeOf(e.currentTarget));
+    const mode = modeOf(e.currentTarget);
+    dragRef.current = { mode, size: current };
+    setDragging(mode);
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!dragging || !ref.current?.parentElement || !contentRef.current) return;
-    let nextSpan = span;
+    const drag = dragRef.current;
+    if (!drag || !ref.current?.parentElement || !contentRef.current) return;
+    let nextSpan = drag.size.span;
     if (wide) {
       const grid = ref.current.parentElement;
       const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
       nextSpan = spanFromPointer(e.clientX, ref.current.getBoundingClientRect().left, grid.getBoundingClientRect().width, gap);
     }
     const nextHeight =
-      dragging === "corner" ? clampHeight(e.clientY - contentRef.current.getBoundingClientRect().top) : current.height;
-    if (nextSpan !== span || nextHeight !== current.height) onResize({ span: nextSpan, height: nextHeight });
+      drag.mode === "corner" ? clampHeight(e.clientY - contentRef.current.getBoundingClientRect().top) : drag.size.height;
+    if (nextSpan !== drag.size.span || nextHeight !== drag.size.height) {
+      drag.size = { span: nextSpan, height: nextHeight };
+      onResize(drag.size);
+    }
   }
 
   function handlePointerUp() {
-    if (!dragging) return;
+    const drag = dragRef.current;
+    if (!drag) return;
+    dragRef.current = null;
     setDragging(null);
-    onResizeEnd(current);
+    onResizeEnd(drag.size);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -228,10 +256,13 @@ export default function ResizableBlock({
     >
       <div
         ref={contentRef}
-        style={height ? { minHeight: height } : undefined}
-        // Grid de uma linha 1fr: com altura escolhida, a linha cresce até ela
-        // e o cartão estica junto (os gráficos ocupam o espaço extra)
-        className={`@container grid grid-rows-[1fr] transition-opacity duration-200 ${
+        // Com altura escolhida: a única linha do grid tem exatamente essa
+        // altura, o cartão estica até ela e rola o que passar; os gráficos
+        // perdem a altura mínima de sempre (--chart-min) para poder encolher.
+        style={height ? ({ height, "--chart-min": "4rem" } as React.CSSProperties) : undefined}
+        className={`@container grid transition-opacity ${
+          height ? "grid-rows-[minmax(0,1fr)] [&>*]:min-h-0 [&>*]:overflow-auto" : "grid-rows-[1fr]"
+        } duration-200 ${
           editing ? "pointer-events-none select-none opacity-50" : ""
         }`}
         aria-hidden={editing || undefined}
@@ -300,14 +331,11 @@ export default function ResizableBlock({
                   onChange={(e) => onResizeEnd({ ...current, span: Number(e.target.value) })}
                   className="h-7 appearance-none rounded-md bg-transparent pl-2 pr-6 font-mono-value text-[11px] text-text-dim hover:text-fg hover:bg-fg/10 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-blue"
                 >
-                  {Array.from({ length: MAX_SPAN - MIN_SPAN + 1 }, (_, i) => MIN_SPAN + i).map((n) => {
-                    const preset = SPAN_PRESETS.find((p) => p.span === n);
-                    return (
-                      <option key={n} value={n} className="bg-panel text-fg">
-                        {preset ? preset.label : `${n}/${MAX_SPAN}`}
-                      </option>
-                    );
-                  })}
+                  {Array.from({ length: MAX_SPAN - MIN_SPAN + 1 }, (_, i) => MIN_SPAN + i).map((n) => (
+                    <option key={n} value={n} className="bg-panel text-fg">
+                      {spanLabel(n)}
+                    </option>
+                  ))}
                 </select>
                 <svg width="10" height="10" viewBox="0 0 12 8" fill="none" className="absolute right-1.5 pointer-events-none text-text-muted">
                   <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -345,7 +373,7 @@ export default function ResizableBlock({
               aria-valuemin={MIN_SPAN}
               aria-valuemax={MAX_SPAN}
               aria-valuenow={span}
-              aria-valuetext={`${span} de ${MAX_SPAN} colunas`}
+              aria-valuetext={`${spanLabel(span)} da linha`}
               data-mode="width"
               {...handleEvents}
               className="group absolute top-12 bottom-8 -right-3 w-6 flex items-center justify-center cursor-ew-resize touch-none z-10 focus:outline-none"
@@ -364,7 +392,7 @@ export default function ResizableBlock({
             tabIndex={0}
             aria-label={`Tamanho de ${label}${wide ? " (setas mudam largura e altura)" : " (setas ↑ ↓ mudam a altura)"}`}
             aria-valuenow={height ?? 0}
-            aria-valuetext={`${wide ? `${span} de ${MAX_SPAN} colunas, ` : ""}${height ? `${height}px de altura` : "altura automática"}`}
+            aria-valuetext={`${wide ? `${spanLabel(span)} da linha, ` : ""}${height ? `${height}px de altura` : "altura automática"}`}
             data-mode="corner"
             {...handleEvents}
             className={`group absolute -bottom-2 -right-2 w-7 h-7 flex items-center justify-center rounded-md border bg-panel touch-none z-20 focus:outline-none focus-visible:border-blue ${
@@ -378,7 +406,7 @@ export default function ResizableBlock({
 
           {/* Tamanho atual, perto do canto */}
           <span className="absolute bottom-2 right-8 px-1.5 py-0.5 rounded bg-panel border border-fg/15 font-mono-value text-[10px] text-blue pointer-events-none z-10">
-            {wide ? `${span}/${MAX_SPAN} · ` : ""}
+            {wide ? `${spanLabel(span)} · ` : ""}
             {height ? `${height}px` : "auto"}
           </span>
         </>

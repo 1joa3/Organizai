@@ -23,18 +23,26 @@ describe("parseLayout / formatLayout", () => {
   });
 
   it("ida e volta preserva ordem, larguras e escondidos", () => {
-    let layout = setBlockSpan(defaultLayout(), "metas", 8);
+    let layout = setBlockSpan(defaultLayout(), "metas", 16);
     layout = moveBlock(layout, "metas", -1);
     layout = setBlockHidden(layout, "dividas", true);
     layout = setBlockHeight(layout, "patrimonio", 420);
-    expect(formatLayout(layout)).toContain("patrimonio:7:420");
+    expect(formatLayout(layout)).toMatch(/^2\|/);
+    expect(formatLayout(layout)).toContain("patrimonio:14:420");
     expect(parseLayout(formatLayout(layout))).toEqual(layout);
     expect(isDefaultLayout(layout)).toBe(false);
   });
 
-  it("ignora blocos desconhecidos, repetidos, valores fora de 3..12 e lixo, mantendo o resto", () => {
-    const layout = parseLayout("saldo:6,xyz:4,metas:2,recentes:13,categorias:abc,dividas:8,saldo:9");
-    expect(layout.spans).toEqual({ ...defaultLayout().spans, saldo: 6, dividas: 8 });
+  it("ignora blocos desconhecidos, repetidos, valores fora de 4..24 e lixo, mantendo o resto", () => {
+    const layout = parseLayout("2|saldo:6,xyz:4,metas:3,recentes:25,categorias:abc,dividas:17,saldo:9");
+    expect(layout.spans).toEqual({ ...defaultLayout().spans, saldo: 6, dividas: 17 });
+  });
+
+  it("formato antigo (12 colunas) dobra as larguras e mantém as alturas", () => {
+    const layout = parseLayout("kpis:12,saldo:5,patrimonio:7:600,metas:3,recentes:13");
+    expect(layout.spans).toMatchObject({ kpis: 24, saldo: 10, patrimonio: 14, metas: 6 });
+    expect(layout.spans.recentes).toBe(defaultLayout().spans.recentes);
+    expect(layout.heights).toEqual({ patrimonio: 600 });
   });
 
   it("cookie antigo (só larguras) mantém a ordem padrão e encaixa os blocos novos no lugar", () => {
@@ -42,7 +50,7 @@ describe("parseLayout / formatLayout", () => {
     const layout = parseLayout(old);
     expect(layout.order).toEqual(defaultLayout().order);
     expect(layout.hidden).toEqual([]);
-    expect(layout.spans.saldo).toBe(6);
+    expect(layout.spans.saldo).toBe(12);
   });
 
   it("bloco ausente entra logo depois do que o antecede na ordem padrão", () => {
@@ -104,19 +112,19 @@ describe("dropPosition", () => {
 });
 
 describe("setBlockHeight", () => {
-  it("arredonda para 10px, limita entre 120 e 1200 e null volta ao automático", () => {
+  it("arredonda para 10px, limita entre 80 e 1200 e null volta ao automático", () => {
     let layout = setBlockHeight(defaultLayout(), "metas", 333);
     expect(layout.heights.metas).toBe(330);
     layout = setBlockHeight(layout, "metas", 5000);
     expect(layout.heights.metas).toBe(1200);
     expect(setBlockHeight(layout, "metas", null).heights).toEqual({});
-    expect(clampHeight(10)).toBe(120);
+    expect(clampHeight(10)).toBe(80);
   });
 
   it("ignora altura inválida no cookie, mantendo a largura", () => {
-    const layout = parseLayout("metas:6:50,recentes:4:abc,saldo:5:300");
+    const layout = parseLayout("2|metas:12:50,recentes:8:abc,saldo:10:300");
     expect(layout.heights).toEqual({ saldo: 300 });
-    expect(layout.spans.metas).toBe(6);
+    expect(layout.spans.metas).toBe(12);
   });
 });
 
@@ -131,22 +139,22 @@ describe("setBlockHidden", () => {
 });
 
 describe("spanFromPointer", () => {
-  // grid de 1200px com gap de 24px → coluna de 78px, passo de 102px
+  // grid de 1200px com gap de 24px e 24 colunas → coluna de 27px, passo de 51px
   const grid = { width: 1200, gap: 24 };
 
   it("arredonda para a coluna mais próxima", () => {
-    expect(spanFromPointer(0 + 4 * 102 - 24, 0, grid.width, grid.gap)).toBe(4);
-    expect(spanFromPointer(0 + 6 * 102 - 24 + 40, 0, grid.width, grid.gap)).toBe(6);
-    expect(spanFromPointer(0 + 6 * 102 - 24 + 60, 0, grid.width, grid.gap)).toBe(7);
+    expect(spanFromPointer(0 + 8 * 51 - 24, 0, grid.width, grid.gap)).toBe(8);
+    expect(spanFromPointer(0 + 12 * 51 - 24 + 20, 0, grid.width, grid.gap)).toBe(12);
+    expect(spanFromPointer(0 + 12 * 51 - 24 + 30, 0, grid.width, grid.gap)).toBe(13);
   });
 
   it("considera onde o bloco começa", () => {
-    expect(spanFromPointer(600 + 3 * 102 - 24, 600, grid.width, grid.gap)).toBe(3);
+    expect(spanFromPointer(600 + 6 * 51 - 24, 600, grid.width, grid.gap)).toBe(6);
   });
 
-  it("limita entre 3 e 12 colunas", () => {
-    expect(spanFromPointer(10, 0, grid.width, grid.gap)).toBe(3);
-    expect(spanFromPointer(5000, 0, grid.width, grid.gap)).toBe(12);
+  it("limita entre 4 e 24 colunas", () => {
+    expect(spanFromPointer(10, 0, grid.width, grid.gap)).toBe(4);
+    expect(spanFromPointer(5000, 0, grid.width, grid.gap)).toBe(24);
     expect(clampSpan(7.4)).toBe(7);
   });
 });

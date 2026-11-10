@@ -15,7 +15,7 @@ export default function HeroSaldo({ saldo, receitas, despesas }: HeroSaldoProps)
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className="relative overflow-hidden glass-card p-8 h-full flex flex-col justify-between group"
+      className="relative overflow-hidden glass-card p-8 min-h-full flex flex-col justify-between group"
     >
       {/* Background Glow */}
       <div className="absolute -inset-24 bg-gradient-to-r from-blue/20 via-emerald/10 to-transparent blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-700 pointer-events-none" />

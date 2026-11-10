@@ -517,7 +517,7 @@ export default function DashboardClient({
             navegador, o grid passa a linhas finas e cada bloco ocupa as que
             precisa: um bloco baixo não deixa buraco nem estica o vizinho. */}
         <div
-          className={`grid grid-cols-12 items-start ${
+          className={`grid grid-cols-24 items-start ${
             masonry ? "gap-x-4 sm:gap-x-6 auto-rows-[4px]" : "gap-4 sm:gap-6"
           }`}
         >

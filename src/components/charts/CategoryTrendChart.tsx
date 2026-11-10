@@ -26,7 +26,7 @@ export default function CategoryTrendChart({ months, series, highlightId }: Cate
 
   if (series.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full min-h-64 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
+      <div className="flex items-center justify-center h-full min-h-[var(--chart-min,16rem)] text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
         Sem despesas nos últimos meses
       </div>
     );
@@ -106,7 +106,7 @@ export default function CategoryTrendChart({ months, series, highlightId }: Cate
 
   return (
     // Altura mínima de sempre; cresce junto quando o bloco fica mais alto
-    <div className="relative h-full min-h-64 w-full">
+    <div className="relative h-full min-h-[var(--chart-min,16rem)] w-full">
       <Bar data={chartData} options={options} />
     </div>
   );
