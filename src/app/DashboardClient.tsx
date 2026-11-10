@@ -23,6 +23,7 @@ import {
   isDefaultLayout,
   moveBlock,
   moveBlockTo,
+  readLayoutCookie,
   saveLayoutCookie,
   setBlockHeight,
   setBlockHidden,
@@ -89,7 +90,7 @@ export default function DashboardClient({
   period,
   layout: initialLayout,
 }: Props) {
-  const [layout, setLayout] = useState(initialLayout);
+  const [layout, setLayout] = useState(() => readLayoutCookie() ?? initialLayout);
   const [editing, setEditing] = useState(false);
   const [categoryView, setCategoryView] = useState<"distribuicao" | "evolucao">("distribuicao");
   const [detailCategoryId, setDetailCategoryId] = useState<string | null>(null);

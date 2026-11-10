@@ -198,6 +198,18 @@ export function setBlockHidden(layout: DashboardLayout, id: DashboardBlockId, hi
   return { ...layout, hidden: hide ? [...hidden, id] : hidden };
 }
 
+/**
+ * Layout salvo no cookie, lido no navegador. A página do dashboard pode vir
+ * pré-carregada de antes de uma mudança de layout; lendo o cookie na hora,
+ * o dashboard sempre abre com o arranjo atual. Null fora do navegador.
+ */
+export function readLayoutCookie(): DashboardLayout | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${DASHBOARD_LAYOUT_COOKIE}=`;
+  const entry = document.cookie.split("; ").find((c) => c.startsWith(prefix));
+  return entry ? parseLayout(entry.slice(prefix.length)) : null;
+}
+
 /** Salva o layout no cookie (só no navegador). */
 export function saveLayoutCookie(layout: DashboardLayout) {
   document.cookie = `${DASHBOARD_LAYOUT_COOKIE}=${formatLayout(layout)}; path=/; max-age=31536000; samesite=lax`;

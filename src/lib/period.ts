@@ -178,11 +178,6 @@ export function shiftPeriod(period: Period, delta: number): Period | null {
   }
 }
 
-/** Salva o período no cookie (só no navegador). */
-export function savePeriodCookie(period: Period) {
-  document.cookie = `${PERIOD_COOKIE}=${formatPeriod(period)}; path=/; max-age=31536000; samesite=lax`;
-}
-
 export function isSamePeriod(a: Period, b: Period): boolean {
   return formatPeriod(a) === formatPeriod(b);
 }

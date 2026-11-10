@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { previousRange, type DateRange } from "./period";
 import { getInstallmentInfo } from "./installments";
 import { summarizeByCategory, buildMonthlyTrend, monthsSpanned } from "./categoryBreakdown";
+import { buildPatrimonyEvolution, patrimonyWindow } from "./patrimony";
 
 /** Totais de receita e despesa no período */
 export async function getPeriodTotals(userId: string, { start: startDate, end: endDate }: DateRange) {
@@ -88,40 +89,33 @@ export async function getInvestmentTotals(userId: string) {
 /** Evolução patrimonial mensal (últimos 12 meses) */
 export async function getPatrimonyEvolution(userId: string) {
   const now = new Date();
-  const months: { label: string; saldo: number; investido: number }[] = [];
+  const window = patrimonyWindow(now);
 
-  for (let i = 11; i >= 0; i--) {
-    const year = new Date(now.getFullYear(), now.getMonth() - i, 1).getFullYear();
-    const month = new Date(now.getFullYear(), now.getMonth() - i, 1).getMonth() + 1;
-    const endDate = new Date(year, month, 1);
+  // 3 consultas em paralelo (antes eram 36, uma rodada por mês)
+  const [before, movements, investments] = await Promise.all([
+    prisma.transaction.groupBy({
+      by: ["type"],
+      _sum: { amount: true },
+      where: { userId, date: { lt: window.start } },
+    }),
+    prisma.transaction.findMany({
+      where: { userId, date: { gte: window.start, lt: window.end } },
+      select: { type: true, amount: true, date: true },
+    }),
+    prisma.investment.findMany({
+      where: { userId, date: { lt: window.end } },
+      select: { currentAmount: true, date: true },
+    }),
+  ]);
 
-    const [receitas, despesas, investments] = await Promise.all([
-      prisma.transaction.aggregate({
-        _sum: { amount: true },
-        where: { userId, type: "receita", date: { lt: endDate } },
-      }),
-      prisma.transaction.aggregate({
-        _sum: { amount: true },
-        where: { userId, type: "despesa", date: { lt: endDate } },
-      }),
-      prisma.investment.aggregate({
-        _sum: { currentAmount: true },
-        where: { userId, date: { lt: endDate } },
-      }),
-    ]);
+  const sumOf = (type: string) => Number(before.find((b) => b.type === type)?._sum.amount ?? 0);
 
-    const saldo = Number(receitas._sum.amount ?? 0) - Number(despesas._sum.amount ?? 0);
-    const investido = Number(investments._sum.currentAmount ?? 0);
-
-    const monthLabel = new Date(year, month - 1).toLocaleDateString("pt-BR", {
-      month: "short",
-      year: "2-digit",
-    });
-
-    months.push({ label: monthLabel, saldo, investido });
-  }
-
-  return months;
+  return buildPatrimonyEvolution(
+    now,
+    sumOf("receita") - sumOf("despesa"),
+    movements.map((m) => ({ ...m, amount: Number(m.amount) })),
+    investments.map((i) => ({ ...i, currentAmount: Number(i.currentAmount) }))
+  );
 }
 
 /** Últimas N transações */

@@ -165,6 +165,7 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
             const isActive = pathname === item.href;
             return (
               <Link
+                prefetch
                 key={item.href}
                 href={item.href}
                 title={!isExpanded ? item.label : undefined}
@@ -262,6 +263,7 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
               <p className="text-xs text-text-muted truncate">{user.email}</p>
             </div>
             <Link
+              prefetch
               href="/perfil"
               role="menuitem"
               onClick={() => setUserMenuOpen(false)}
@@ -298,6 +300,7 @@ export function MobileBottomNav() {
           const isActive = pathname === item.href;
           return (
             <Link
+              prefetch
               key={item.href}
               href={item.href}
               className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium transition-colors duration-300 ${isActive ? "text-blue" : "text-text-muted"
@@ -317,6 +320,7 @@ export function MobileBottomNav() {
           Tema
         </button>
         <Link
+          prefetch
           href="/perfil"
           className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium transition-colors duration-300 ${
             pathname === "/perfil" ? "text-blue" : "text-text-muted"

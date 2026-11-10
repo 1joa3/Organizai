@@ -13,10 +13,10 @@ import {
   periodLabel,
   periodRange,
   periodShortLabel,
-  savePeriodCookie,
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
+import { savePeriod } from "@/lib/periodActions";
 
 interface PeriodSelectorProps {
   /** Período atual no formato de `formatPeriod` (ex: "2026-10", "last-3") */
@@ -100,9 +100,11 @@ export default function PeriodSelector({ period: periodValue }: PeriodSelectorPr
 
   function navigate(next: Period) {
     const value = formatPeriod(next);
-    savePeriodCookie(next);
     setOpen(false);
-    startTransition(() => router.push(`${pathname}?period=${value}`));
+    startTransition(async () => {
+      await savePeriod(value);
+      router.push(`${pathname}?period=${value}`);
+    });
   }
 
   const prev = shiftPeriod(period, -1);
