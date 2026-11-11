@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { FormMessage } from "@/components/auth/AuthCard";
+import { useTheme } from "@/components/ui/ThemeToggle";
+import { applyTheme, type Theme } from "@/lib/theme";
 import { changePassword, signOut, updateProfile, type AuthState } from "@/lib/authActions";
 
 interface ProfileClientProps {
@@ -49,6 +51,12 @@ export default function ProfileClient({ name, email, createdAt }: ProfileClientP
           <p className="text-sm text-text-dim truncate">{email}</p>
           {memberSince && <p className="text-xs text-text-muted mt-1">Membro desde {memberSince}</p>}
         </div>
+      </motion.div>
+
+      {/* Aparência (no celular, o único lugar para trocar o tema) */}
+      <motion.div {...cardMotion(0.08)} className="glass-card p-6 space-y-4">
+        <h2 className="font-display text-lg text-fg">Aparência</h2>
+        <AppearancePicker />
       </motion.div>
 
       {/* Nome */}
@@ -97,6 +105,32 @@ export default function ProfileClient({ name, email, createdAt }: ProfileClientP
           </Button>
         </form>
       </motion.div>
+    </div>
+  );
+}
+
+function AppearancePicker() {
+  const [theme] = useTheme();
+  const options: { value: Theme; label: string }[] = [
+    { value: "dark", label: "Escuro" },
+    { value: "light", label: "Claro" },
+  ];
+  return (
+    <div role="radiogroup" aria-label="Tema" className="flex gap-2 p-1 bg-fg/5 rounded-lg border border-fg/10">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={theme === o.value}
+          onClick={() => applyTheme(o.value)}
+          className={`flex-1 py-2.5 rounded-md text-sm font-medium transition-all cursor-pointer border ${
+            theme === o.value ? "bg-blue/10 text-blue border-blue/30" : "text-text-dim hover:text-fg border-transparent"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }

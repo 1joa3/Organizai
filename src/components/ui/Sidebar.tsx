@@ -291,44 +291,35 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const [theme, toggleTheme] = useTheme();
+  const items = [...navItems, { href: "/perfil", label: "Perfil", icon: ProfileIcon }];
 
+  // O tema fica em Perfil → Aparência: aqui só o que é navegação
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-panel/90 backdrop-blur-3xl border-t border-fg/5 shadow-[0_-4px_24px_var(--shadow)] pb-[env(safe-area-inset-bottom)]">
-      <div className="flex items-center justify-around px-2 py-2">
-        {navItems.map((item) => {
+      <div className="flex items-stretch justify-around px-2 py-1.5">
+        {items.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               prefetch
               key={item.href}
               href={item.href}
-              className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium transition-colors duration-300 ${isActive ? "text-blue" : "text-text-muted"
-                }`}
+              aria-current={isActive ? "page" : undefined}
+              className={`relative flex-1 flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium transition-colors duration-300 ${
+                isActive ? "text-blue" : "text-text-muted active:text-fg"
+              }`}
             >
-              <span className={isActive ? "drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""}>{item.icon}</span>
+              <span
+                className={`flex items-center justify-center w-14 h-8 rounded-full transition-colors duration-300 ${
+                  isActive ? "bg-blue/10 drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""
+                }`}
+              >
+                {item.icon}
+              </span>
               {item.label}
             </Link>
           );
         })}
-        <button
-          onClick={toggleTheme}
-          aria-label={themeToggleLabel(theme)}
-          className="relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium text-text-muted transition-colors duration-300 cursor-pointer"
-        >
-          <ThemeIcon theme={theme} />
-          Tema
-        </button>
-        <Link
-          prefetch
-          href="/perfil"
-          className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium transition-colors duration-300 ${
-            pathname === "/perfil" ? "text-blue" : "text-text-muted"
-          }`}
-        >
-          {ProfileIcon}
-          Perfil
-        </Link>
       </div>
     </nav>
   );

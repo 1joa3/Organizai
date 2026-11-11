@@ -12,7 +12,8 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { useToast } from "@/components/ui/Toast";
 import { createTransaction, updateTransaction, deleteTransaction, deleteTransactionGroup, createCategory, createAccount, deleteTransactions, updateTransactionsCategory } from "./actions";
-import { formatCurrency, formatDate, formatDateShort, formatDateInput } from "@/lib/formatters";
+import { formatCurrency, formatDayMonth, formatDateInput } from "@/lib/formatters";
+import { dayLabel, groupByDay, matchesSearch, summarizeTransactions } from "@/lib/transactionList";
 import { exportTransactionsToCSV } from "@/lib/csv";
 import { getInstallmentInfo } from "@/lib/installments";
 import type { SerializedTransaction } from "@/lib/types";
@@ -43,6 +44,7 @@ export default function TransactionsClient({
 
   // Filtros
   const [filterType, setFilterType] = useState<string>("");
+  const [search, setSearch] = useState("");
 
   // Seleção múltipla
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -221,8 +223,11 @@ export default function TransactionsClient({
 
   const filtered = transactions.filter((t) => {
     if (filterType && t.type !== filterType) return false;
-    return true;
+    return matchesSearch(t, search);
   });
+  const isFiltering = filterType !== "" || search.trim() !== "";
+  const summary = summarizeTransactions(filtered);
+  const days = groupByDay(filtered);
 
   const selectedTransactions = filtered.filter((t) => selectedIds.has(t.id));
   const selectedTypes = new Set(selectedTransactions.map((t) => t.type));
@@ -318,14 +323,14 @@ export default function TransactionsClient({
       label: "Data",
       sortable: true,
       render: (t: SerializedTransaction) => (
-        <span className="font-mono-value text-text-dim">{formatDate(t.date)}</span>
+        <span className="font-mono-value text-text-dim whitespace-nowrap">{formatDayMonth(t.date)}</span>
       ),
     },
     {
       key: "description",
       label: "Descrição",
       sortable: true,
-      render: (t: SerializedTransaction) => <span className="font-medium text-fg">{t.description}</span>,
+      render: (t: SerializedTransaction) => <TransactionTitle t={t} />,
     },
     {
       key: "category",
@@ -389,79 +394,69 @@ export default function TransactionsClient({
     },
   ];
 
-  // No celular a descrição e o valor ficam na primeira linha (com espaço para
-  // o nome inteiro) e categoria, data e ações na segunda.
+  // No celular: lista em seções por dia. Tocar no cartão abre a edição
+  // (excluir fica dentro dela); a caixinha seleciona para ações em lote.
   function renderMobileItem(t: SerializedTransaction) {
+    const selected = selectedIds.has(t.id);
     return (
-      <div className="glass-panel p-3.5 flex items-start gap-3">
-        <input
-          type="checkbox"
-          checked={selectedIds.has(t.id)}
-          onChange={() => toggleSelect(t.id)}
-          className="w-4 h-4 mt-3 accent-blue cursor-pointer shrink-0"
-          aria-label="Selecionar transação"
-        />
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => openEditModal(t)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openEditModal(t);
+          }
+        }}
+        aria-label={`Editar ${t.description}`}
+        className={`glass-panel p-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-[transform,border-color] ${
+          selected ? "border-blue/40!" : ""
+        }`}
+      >
+        <label
+          onClick={(e) => e.stopPropagation()}
+          className="-m-2 p-2 shrink-0 flex items-center cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => toggleSelect(t.id)}
+            className="w-4 h-4 accent-blue cursor-pointer"
+            aria-label={`Selecionar ${t.description}`}
+          />
+        </label>
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner shrink-0"
           style={{
             backgroundColor: `${t.category.color}15`,
             border: `1px solid ${t.category.color}40`,
             color: t.category.color,
-            filter: `drop-shadow(0 0 4px ${t.category.color}80)`,
           }}
         >
           <CategoryIcon name={t.category.name} size={18} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-medium text-fg line-clamp-2 break-words min-w-0">{t.description}</p>
-            <span
-              className={`font-mono-value text-sm font-medium whitespace-nowrap shrink-0 ${
-                t.type === "receita" ? "text-emerald drop-shadow-[0_0_8px_rgba(204,255,0,0.3)]" : "text-coral drop-shadow-[0_0_8px_rgba(255,0,85,0.3)]"
-              }`}
-            >
-              {t.type === "receita" ? "+" : "−"}
-              {formatCurrency(Number(t.amount))}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2 mt-1">
-            <p className="text-xs text-text-dim truncate min-w-0">
-              {t.category.name} <span className="text-fg/20">•</span>{" "}
-              <span className="font-mono-value text-text-muted">{formatDateShort(t.date)}</span>
-            </p>
-            <div className="flex items-center gap-1 shrink-0 -mr-1.5">
-              <button
-                onClick={() => openEditModal(t)}
-                className="p-1.5 text-text-dim hover:text-blue transition-colors"
-                title="Editar"
-                aria-label="Editar"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => handleDeleteClick(t)}
-                className="p-1.5 text-text-dim hover:text-coral transition-colors"
-                title="Excluir"
-                aria-label="Excluir"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
+          <TransactionTitle t={t} className="text-sm line-clamp-2 break-words" />
+          <p className="text-xs text-text-dim truncate mt-0.5">
+            {t.category.name} <span className="text-fg/20">•</span> {t.account.name}
+          </p>
         </div>
+        <span
+          className={`font-mono-value text-sm font-medium whitespace-nowrap shrink-0 ${
+            t.type === "receita" ? "text-emerald" : "text-coral"
+          }`}
+        >
+          {t.type === "receita" ? "+" : "−"}
+          {formatCurrency(Number(t.amount))}
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -472,22 +467,61 @@ export default function TransactionsClient({
           <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Transações</h1>
           <p className="text-sm text-text-dim mt-1">Gerencie suas receitas e despesas</p>
         </div>
-        <Button onClick={openCreateModal}>Nova Transação</Button>
+        {/* No celular, o botão flutuante "+" faz o mesmo */}
+        <div className="hidden md:block">
+          <Button onClick={openCreateModal}>Nova Transação</Button>
+        </div>
       </motion.div>
 
-      {/* Toolbar */}
+      {/* Filtros: período e tipo; busca, importar e exportar */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-wrap gap-3 sm:gap-4 items-center justify-between"
+        transition={{ delay: 0.05 }}
+        className="flex flex-col lg:flex-row lg:items-center gap-3"
       >
-        <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
-          <PeriodSelector period={period} />
-          <div className="w-40 sm:w-48">
+        {/* Celular: período + importar/exportar numa linha, busca + tipo na
+            outra. Em telas largas as duas linhas viram uma só (lg:contents). */}
+        <div className="flex gap-2 sm:gap-3 items-center lg:contents">
+          <div className="flex-1 min-w-0 lg:flex-none lg:order-1">
+            <PeriodSelector period={period} />
+          </div>
+          <div className="lg:order-4 shrink-0">
+            <ToolbarButton label="Importar fatura" onClick={() => setIsImportModalOpen(true)}>
+              <path d="M12 3v12M7 10l5 5 5-5" />
+              <path d="M5 21h14" />
+            </ToolbarButton>
+          </div>
+          <div className="lg:order-5 shrink-0">
+            <ToolbarButton label="Exportar CSV" onClick={() => exportTransactionsToCSV(filtered)}>
+              <path d="M12 15V3M7 8l5-5 5 5" />
+              <path d="M5 21h14" />
+            </ToolbarButton>
+          </div>
+        </div>
+        <div className="flex gap-2 sm:gap-3 items-center lg:contents">
+          <label className="relative flex-1 min-w-0 lg:order-3">
+            <span className="sr-only">Buscar transações</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
+            </svg>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                clearSelection();
+              }}
+              placeholder="Buscar descrição, categoria ou conta"
+              className="w-full h-[46px] pl-10 pr-3 text-sm bg-fg/5 text-fg placeholder:text-text-muted border border-fg/10 rounded-lg hover:border-fg/20 focus:border-blue focus:outline-none focus:ring-4 focus:ring-blue/10 transition-all shadow-inner"
+            />
+          </label>
+          <div className="w-32 sm:w-44 shrink-0 lg:order-2">
             <Select
+              aria-label="Tipo"
               options={[
-                { value: "", label: "Todos os tipos" },
+                { value: "", label: "Todos" },
                 { value: "receita", label: "Receitas" },
                 { value: "despesa", label: "Despesas" },
               ]}
@@ -499,22 +533,32 @@ export default function TransactionsClient({
             />
           </div>
         </div>
-        <div className="flex gap-3 w-full sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
-          <Button
-            variant="glass"
-            size="sm"
-            onClick={() => setIsImportModalOpen(true)}
-          >
-            Importar Fatura
-          </Button>
-          <Button
-            variant="glass"
-            size="sm"
-            onClick={() => exportTransactionsToCSV(filtered)}
-          >
-            Exportar CSV
-          </Button>
-        </div>
+      </motion.div>
+
+      {/* Resumo do que está na lista */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4"
+      >
+        {/* No celular o saldo vem primeiro, na largura toda */}
+        {([
+          ["Receitas", summary.receitas, "text-emerald", ""],
+          ["Despesas", summary.despesas, "text-coral", ""],
+          ["Saldo", summary.saldo, summary.saldo < 0 ? "text-coral" : "text-fg", "col-span-2 sm:col-span-1 order-first sm:order-none"],
+        ] as const).map(([label, value, color, place]) => (
+          <div key={label} className={`glass-panel px-4 py-3 sm:px-5 sm:py-4 min-w-0 ${place}`}>
+            <p className="text-[10px] sm:text-xs font-medium text-text-dim uppercase tracking-wider truncate">
+              {label}
+              {isFiltering && <span className="hidden sm:inline normal-case tracking-normal text-text-muted"> · filtrado</span>}
+            </p>
+            <p className={`font-mono-value mt-1 truncate ${label === "Saldo" ? "text-xl" : "text-base"} sm:text-xl ${color}`}>
+              {label === "Saldo" && value < 0 ? "−" : ""}
+              {formatCurrency(Math.abs(value))}
+            </p>
+          </div>
+        ))}
       </motion.div>
 
       {/* Barra de ações em massa */}
@@ -567,14 +611,59 @@ export default function TransactionsClient({
         </motion.div>
       )}
 
-      {/* Tabela */}
+      {/* Celular: seções por dia */}
+      {/* pb: espaço para o botão flutuante não cobrir o último item */}
+      <div className="md:hidden space-y-5 pb-16">
+        {days.length === 0 ? (
+          <div className="glass-panel px-5 py-12 text-center text-text-muted text-sm">
+            {isFiltering ? "Nenhuma transação encontrada com esses filtros" : "Nenhuma transação neste período"}
+          </div>
+        ) : (
+          days.map((day) => (
+            <section key={day.key} aria-label={dayLabel(day.date)}>
+              <div className="flex items-baseline justify-between px-1 mb-2">
+                <h2 className="text-xs font-semibold text-text-dim uppercase tracking-wider">{dayLabel(day.date)}</h2>
+                <span className={`font-mono-value text-xs ${day.total < 0 ? "text-coral/80" : "text-emerald/80"}`}>
+                  {day.total < 0 ? "−" : "+"}
+                  {formatCurrency(Math.abs(day.total))}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {day.items.map((t) => (
+                  <div key={t.id}>{renderMobileItem(t)}</div>
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+      </div>
+
+      {/* Computador: tabela */}
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.15 }}
+        className="hidden md:block"
       >
-        <Table columns={columns} data={filtered} keyExtractor={(t) => t.id} renderMobileItem={renderMobileItem} />
+        <Table
+          columns={columns}
+          data={filtered}
+          keyExtractor={(t) => t.id}
+          emptyMessage={isFiltering ? "Nenhuma transação encontrada com esses filtros" : "Nenhuma transação neste período"}
+        />
       </motion.div>
+
+      {/* Celular: botão flutuante de nova transação, acima da barra inferior */}
+      <button
+        type="button"
+        onClick={openCreateModal}
+        aria-label="Nova transação"
+        className="md:hidden fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 w-14 h-14 rounded-full bg-fg text-bg flex items-center justify-center shadow-[0_8px_30px_-6px_var(--shadow),0_0_20px_color-mix(in_srgb,var(--fg)_20%,transparent)] active:scale-95 transition-transform cursor-pointer"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
 
       {/* Modal Nova Transação */}
       <Modal
@@ -781,12 +870,26 @@ export default function TransactionsClient({
             <Input name="installments" label="Parcelas" type="number" min="1" max="120" defaultValue="1" />
           )}
 
-          <div className="pt-4 border-t border-fg/10 flex justify-end gap-3">
+          <div className="pt-4 border-t border-fg/10 flex items-center justify-end gap-3">
+            {editingTransaction && (
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => {
+                  const target = editingTransaction;
+                  closeModal();
+                  handleDeleteClick(target);
+                }}
+                className="mr-auto text-coral! hover:bg-coral/10!"
+              >
+                Excluir
+              </Button>
+            )}
             <Button variant="ghost" type="button" onClick={closeModal}>
               Cancelar
             </Button>
             <Button type="submit" loading={isLoading}>
-              {editingTransaction ? "Salvar Alterações" : "Salvar Transação"}
+              {editingTransaction ? "Salvar" : "Salvar Transação"}
             </Button>
           </div>
         </form>
@@ -835,5 +938,38 @@ export default function TransactionsClient({
         categories={categories}
       />
     </div>
+  );
+}
+
+/** Descrição da transação; parcela aparece como selo "3/10" em vez de "(3/10)". */
+function TransactionTitle({ t, className = "" }: { t: SerializedTransaction; className?: string }) {
+  const installment = getInstallmentInfo(t);
+  return (
+    <p className={`font-medium text-fg ${className}`}>
+      {installment ? installment.baseName : t.description}
+      {installment && (
+        <span className="ml-2 inline-flex align-middle px-1.5 py-px rounded-md bg-fg/[0.07] border border-fg/10 font-mono-value text-[10px] font-normal text-text-dim whitespace-nowrap">
+          {installment.current}/{installment.total}
+        </span>
+      )}
+    </p>
+  );
+}
+
+/** Botão da barra de filtros: só ícone no celular, ícone e texto em telas largas. */
+function ToolbarButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className="h-[46px] shrink-0 inline-flex items-center justify-center gap-2 px-3 sm:px-4 rounded-lg glass-panel text-text-dim hover:text-fg hover:border-fg/20 hover:bg-fg/10 transition-colors cursor-pointer"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {children}
+      </svg>
+      <span className="hidden xl:inline text-xs font-medium whitespace-nowrap">{label}</span>
+    </button>
   );
 }

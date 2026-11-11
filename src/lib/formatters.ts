@@ -48,6 +48,15 @@ export function formatDateShort(date: Date | string): string {
 }
 
 /**
+ * Dia e mês por extenso curto, sem o ano (o período já está na tela)
+ * Ex: formatDayMonth("2024-03-15") → "15 de mar."
+ */
+export function formatDayMonth(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(d);
+}
+
+/**
  * Formata data para input[type="date"]
  * Ex: formatDateInput(new Date()) → "2024-03-15"
  */
