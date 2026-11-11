@@ -2,11 +2,12 @@
  * Layout do Dashboard: ordem dos blocos, quais estão escondidos, a largura
  * de cada um (em colunas de um grid de 24) e a altura, quando escolhida.
  * Salvo num cookie para o servidor já renderizar do jeito escolhido.
- * Formato: `2|` e os blocos na ordem, `id:largura` ou `id:largura:altura`,
- * com `!` na frente dos escondidos — `2|kpis:24,!saldo:10,patrimonio:14:420`.
- * Sem o `2|`, é o formato antigo, com larguras em 12 colunas (dobradas na
- * leitura); os formatos ainda mais antigos (sem ordem, sem `!`, sem altura)
- * continuam aceitos.
+ * Formato: `3|` e os blocos na ordem, `id:largura` ou `id:largura:altura`,
+ * com `!` na frente dos escondidos — `3|saldo:16,!kpis:24,patrimonio:14:420`.
+ * `2|` é o formato de antes do resumo do período; sem prefixo, o de larguras
+ * em 12 colunas (dobradas na leitura); os ainda mais antigos (sem ordem,
+ * sem `!`, sem altura) continuam aceitos. Nos anteriores ao `3|`, o resumo
+ * (que antes era só o saldo) vai para o topo no tamanho padrão.
  *
  * As larguras valem quando a área do Dashboard é larga (24 colunas). Mais
  * estreita, os blocos pequenos dividem a linha em dois e o resto ocupa a
@@ -15,11 +16,12 @@
 export const DASHBOARD_LAYOUT_COOKIE = "dash_layout";
 
 export const DASHBOARD_BLOCKS = [
+  { id: "saldo", label: "Resumo do Período", defaultSpan: 16 },
+  { id: "insights", label: "Observações", defaultSpan: 8 },
   { id: "kpis", label: "Indicadores", defaultSpan: 24 },
-  { id: "saldo", label: "Saldo", defaultSpan: 10 },
   { id: "patrimonio", label: "Evolução Patrimonial", defaultSpan: 14 },
+  { id: "categorias", label: "Despesas por Categoria", defaultSpan: 10 },
   { id: "dividas", label: "Quitação de Dívidas", defaultSpan: 24 },
-  { id: "categorias", label: "Despesas por Categoria", defaultSpan: 8 },
   { id: "parceladas", label: "Despesas Parceladas", defaultSpan: 8 },
   { id: "metas", label: "Metas", defaultSpan: 8 },
   { id: "recentes", label: "Transações Recentes", defaultSpan: 8 },
@@ -40,8 +42,10 @@ export interface DashboardLayout {
 export const MIN_SPAN = 4;
 export const MAX_SPAN = 24;
 
-/** Prefixo do formato atual do cookie (larguras em 24 colunas) */
-const FORMAT_PREFIX = "2|";
+/** Prefixo do formato atual do cookie (larguras em 24 colunas, com o resumo) */
+const FORMAT_PREFIX = "3|";
+/** Formato anterior: larguras em 24 colunas, saldo ainda sem o resumo */
+const PREVIOUS_PREFIX = "2|";
 
 /** Altura escolhida: de 80 a 1200px, em passos de 10px */
 export const MIN_HEIGHT = 80;
@@ -97,8 +101,9 @@ export function parseLayout(value: string | undefined): DashboardLayout {
 
   // Formato antigo: larguras em 12 colunas, que viram o dobro em 24
   const current = value.startsWith(FORMAT_PREFIX);
-  const spanScale = current ? 1 : 2;
-  const body = current ? value.slice(FORMAT_PREFIX.length) : value;
+  const previous = value.startsWith(PREVIOUS_PREFIX);
+  const spanScale = current || previous ? 1 : 2;
+  const body = current || previous ? value.slice(2) : value;
 
   const order: DashboardBlockId[] = [];
   const hidden: DashboardBlockId[] = [];
@@ -115,6 +120,17 @@ export function parseLayout(value: string | undefined): DashboardLayout {
     if (heightStr && Number.isInteger(height) && height >= MIN_HEIGHT && height <= MAX_HEIGHT) {
       layout.heights[id] = height;
     }
+  }
+
+  // Layout de antes do resumo: o bloco saldo virou o resumo do período, que
+  // precisa de espaço — vai para o topo, visível, na largura padrão
+  if (!current) {
+    const at = order.indexOf("saldo");
+    if (at !== -1) order.splice(at, 1);
+    order.unshift("saldo");
+    hidden.splice(0, hidden.length, ...hidden.filter((id) => id !== "saldo"));
+    layout.spans.saldo = defaultLayout().spans.saldo;
+    delete layout.heights.saldo;
   }
 
   BLOCK_IDS.forEach((id, defaultIndex) => {

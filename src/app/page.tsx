@@ -12,7 +12,24 @@ import DashboardClient from "./DashboardClient";
 import { requireUser } from "@/lib/dal";
 import { cookies } from "next/headers";
 import { DASHBOARD_LAYOUT_COOKIE, parseLayout } from "@/lib/dashboardLayout";
-import { PERIOD_COOKIE, resolvePeriod, periodRange, periodLabel, formatPeriod } from "@/lib/period";
+import {
+  PERIOD_COOKIE,
+  MONTH_NAMES,
+  resolvePeriod,
+  periodRange,
+  periodLabel,
+  formatPeriod,
+  previousRange,
+  parseISODate,
+  toISODate,
+} from "@/lib/period";
+import { buildInsights, buildPace } from "@/lib/dashboardStory";
+
+/** Dia de hoje no Brasil (o servidor roda em UTC) */
+function todayInBrazil() {
+  const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+  return parseISODate(iso) ?? new Date();
+}
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +38,12 @@ interface PageProps {
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
-  const { id: userId } = await requireUser();
+  const { id: userId, name } = await requireUser();
   const params = await searchParams;
   const cookieStore = await cookies();
   const period = resolvePeriod(params, cookieStore.get(PERIOD_COOKIE)?.value);
   const range = periodRange(period);
+  const prevRange = previousRange(range);
 
   const [
     monthlyTotals,
@@ -36,6 +54,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     goals,
     installmentsSummary,
     debtsSummary,
+    previousTotals,
   ] = await Promise.all([
     getPeriodTotals(userId, range),
     getCategoryReport(userId, range),
@@ -45,7 +64,31 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     getGoalsSummary(userId),
     getInstallmentsSummary(userId, range),
     getDebtsSummary(userId),
+    getPeriodTotals(userId, prevRange),
   ]);
+
+  // Resumo do período: ritmo de gastos e observações
+  const previousName =
+    period.kind === "month" ? MONTH_NAMES[(period.month + 10) % 12].toLowerCase() : null;
+  const pace = buildPace(
+    categoryReport.transactions,
+    categoryReport.previousTransactions,
+    range,
+    prevRange,
+    todayInBrazil()
+  );
+  const insights = buildInsights({
+    current: categoryReport.transactions,
+    previous: categoryReport.previousTransactions,
+    range,
+    previousRange: prevRange,
+    pace,
+    receitas: monthlyTotals.receitas,
+    despesas: monthlyTotals.despesas,
+    previousName,
+    installments: installmentsSummary,
+    goals: goals.map((g) => ({ name: g.name, currentAmount: Number(g.currentAmount), targetAmount: Number(g.targetAmount) })),
+  });
 
   // Serializar transações recentes
   const serializedTransactions = recentTransactions.map((t) => ({
@@ -76,6 +119,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   return (
     <DashboardClient
       monthlyTotals={monthlyTotals}
+      previousTotals={previousTotals}
+      pace={pace}
+      insights={insights}
+      previousName={previousName}
+      rangeStart={toISODate(range.start)}
+      firstName={name?.trim().split(/\s+/)[0] ?? null}
       categoryReport={{
         total: categoryReport.total,
         previousTotal: categoryReport.previousTotal,

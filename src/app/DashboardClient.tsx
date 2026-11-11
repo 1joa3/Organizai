@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HeroSaldo from "@/components/dashboard/HeroSaldo";
 import KpiStrip from "@/components/dashboard/KpiStrip";
+import Insights from "@/components/dashboard/Insights";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import DonutCategories from "@/components/charts/DonutCategories";
 import CategoryTrendChart from "@/components/charts/CategoryTrendChart";
@@ -31,10 +32,19 @@ import {
   visibleBlocks,
 } from "@/lib/dashboardLayout";
 import type { CategoryRow } from "@/lib/categoryBreakdown";
+import type { Insight, Pace } from "@/lib/dashboardStory";
 import { formatCurrency, formatMonthYear, calcPercent } from "@/lib/formatters";
 
 interface Props {
   monthlyTotals: { receitas: number; despesas: number; saldo: number };
+  previousTotals: { receitas: number; despesas: number; saldo: number };
+  pace: Pace;
+  insights: Insight[];
+  /** "outubro" quando o período é um mês; null nos demais */
+  previousName: string | null;
+  /** Primeiro dia do período, "2026-11-01" */
+  rangeStart: string;
+  firstName: string | null;
   categoryReport: {
     total: number;
     previousTotal: number;
@@ -79,8 +89,20 @@ interface Props {
 
 const noopSubscribe = () => () => {};
 
+/** "Bom dia", "Boa tarde" ou "Boa noite" pelo relógio de quem está vendo */
+function greetingNow() {
+  const hour = new Date().getHours();
+  return hour < 5 ? "Boa noite" : hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+}
+
 export default function DashboardClient({
   monthlyTotals,
+  previousTotals,
+  pace,
+  insights,
+  previousName,
+  rangeStart,
+  firstName,
   categoryReport,
   investmentTotals,
   patrimonyEvolution,
@@ -99,6 +121,8 @@ export default function DashboardClient({
     () => true,
     () => false
   );
+  // No servidor não dá para saber a hora de quem vê: começa com "Olá"
+  const greeting = useSyncExternalStore(noopSubscribe, greetingNow, () => "Olá");
   const [editing, setEditing] = useState(false);
   const [categoryView, setCategoryView] = useState<"distribuicao" | "evolucao">("distribuicao");
   const [detailCategoryId, setDetailCategoryId] = useState<string | null>(null);
@@ -217,7 +241,7 @@ export default function DashboardClient({
       <KpiStrip
         receitas={monthlyTotals.receitas}
         despesas={monthlyTotals.despesas}
-        economia={monthlyTotals.saldo}
+        days={pace.ongoing ? pace.elapsed : pace.days}
         investido={investmentTotals.current}
         retorno={investmentTotals.returnPercent}
       />
@@ -229,9 +253,15 @@ export default function DashboardClient({
           saldo={monthlyTotals.saldo}
           receitas={monthlyTotals.receitas}
           despesas={monthlyTotals.despesas}
+          previous={previousTotals}
+          pace={pace}
+          rangeStart={rangeStart}
+          periodLabel={periodLabel}
+          previousName={previousName}
         />
       </div>
     ),
+    insights: <Insights insights={insights} />,
     // Gráfico de evolução patrimonial
     patrimonio: (
       <motion.div
@@ -428,9 +458,12 @@ export default function DashboardClient({
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-wrap items-center justify-between gap-4"
       >
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Dashboard</h1>
-          <p className="text-xs sm:text-sm text-blue uppercase tracking-widest font-medium whitespace-nowrap">{periodLabel}</p>
+        <div>
+          <p className="text-xs text-blue uppercase tracking-widest font-medium mb-1">Dashboard</p>
+          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight" suppressHydrationWarning>
+            {greeting}
+            {firstName ? `, ${firstName}` : ""}
+          </h1>
         </div>
         <div className="flex items-center gap-3 w-full @xl/page:w-auto">
           <div className="flex-1 min-w-0 @xl/page:flex-none">

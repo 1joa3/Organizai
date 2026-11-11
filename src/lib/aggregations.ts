@@ -347,5 +347,7 @@ export async function getCategoryReport(userId: string, range: DateRange) {
     categories: summarizeByCategory(current, before),
     trend: buildMonthlyTrend(inRange({ start: trendStart, end: trendEnd }), lastMonth, trendMonths),
     transactions: current,
+    /** Despesas do período anterior (para o resumo do Dashboard; não vão para o navegador) */
+    previousTransactions: before,
   };
 }

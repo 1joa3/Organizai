@@ -27,49 +27,60 @@ describe("parseLayout / formatLayout", () => {
     layout = moveBlock(layout, "metas", -1);
     layout = setBlockHidden(layout, "dividas", true);
     layout = setBlockHeight(layout, "patrimonio", 420);
-    expect(formatLayout(layout)).toMatch(/^2\|/);
+    expect(formatLayout(layout)).toMatch(/^3\|/);
     expect(formatLayout(layout)).toContain("patrimonio:14:420");
     expect(parseLayout(formatLayout(layout))).toEqual(layout);
     expect(isDefaultLayout(layout)).toBe(false);
   });
 
   it("ignora blocos desconhecidos, repetidos, valores fora de 4..24 e lixo, mantendo o resto", () => {
-    const layout = parseLayout("2|saldo:6,xyz:4,metas:3,recentes:25,categorias:abc,dividas:17,saldo:9");
+    const layout = parseLayout("3|saldo:6,xyz:4,metas:3,recentes:25,categorias:abc,dividas:17,saldo:9");
     expect(layout.spans).toEqual({ ...defaultLayout().spans, saldo: 6, dividas: 17 });
   });
 
   it("formato antigo (12 colunas) dobra as larguras e mantém as alturas", () => {
     const layout = parseLayout("kpis:12,saldo:5,patrimonio:7:600,metas:3,recentes:13");
-    expect(layout.spans).toMatchObject({ kpis: 24, saldo: 10, patrimonio: 14, metas: 6 });
+    expect(layout.spans).toMatchObject({ kpis: 24, patrimonio: 14, metas: 6 });
     expect(layout.spans.recentes).toBe(defaultLayout().spans.recentes);
     expect(layout.heights).toEqual({ patrimonio: 600 });
   });
 
   it("cookie antigo (só larguras) mantém a ordem padrão e encaixa os blocos novos no lugar", () => {
-    const old = "saldo:6,patrimonio:6,dividas:12,categorias:4,parceladas:4,metas:4,recentes:4";
+    const old = "saldo:6,patrimonio:6,categorias:4,dividas:12,parceladas:4,metas:4,recentes:4";
     const layout = parseLayout(old);
     expect(layout.order).toEqual(defaultLayout().order);
     expect(layout.hidden).toEqual([]);
-    expect(layout.spans.saldo).toBe(12);
+    expect(layout.spans.saldo).toBe(16);
   });
 
   it("bloco ausente entra logo depois do que o antecede na ordem padrão", () => {
     const layout = parseLayout("recentes:4,saldo:5,kpis:12");
-    expect(layout.order.slice(0, 5)).toEqual(["recentes", "saldo", "patrimonio", "dividas", "categorias"]);
+    expect(layout.order.slice(0, 5)).toEqual(["saldo", "insights", "recentes", "kpis", "patrimonio"]);
     expect(layout.order).toHaveLength(defaultLayout().order.length);
+  });
+});
+
+describe("layout de antes do resumo", () => {
+  it("leva o resumo para o topo, visível, na largura padrão e sem altura fixa", () => {
+    const layout = parseLayout("2|kpis:24,!saldo:10:500,patrimonio:14:420,metas:12");
+    expect(layout.order.slice(0, 4)).toEqual(["saldo", "insights", "kpis", "patrimonio"]);
+    expect(layout.hidden).toEqual([]);
+    expect(layout.spans.saldo).toBe(16);
+    expect(layout.heights).toEqual({ patrimonio: 420 });
+    expect(layout.spans.metas).toBe(12);
   });
 });
 
 describe("moveBlock", () => {
   it("troca com o vizinho visível, pulando os escondidos", () => {
-    const layout = setBlockHidden(defaultLayout(), "patrimonio", true);
-    const moved = moveBlock(layout, "dividas", -1);
-    expect(visibleBlocks(moved).slice(0, 3)).toEqual(["kpis", "dividas", "saldo"]);
+    const layout = setBlockHidden(defaultLayout(), "insights", true);
+    const moved = moveBlock(layout, "kpis", -1);
+    expect(visibleBlocks(moved).slice(0, 3)).toEqual(["kpis", "saldo", "patrimonio"]);
   });
 
   it("não sai das pontas", () => {
     const layout = defaultLayout();
-    expect(moveBlock(layout, "kpis", -1)).toBe(layout);
+    expect(moveBlock(layout, "saldo", -1)).toBe(layout);
     expect(moveBlock(layout, "recentes", 1)).toBe(layout);
   });
 });
@@ -77,13 +88,13 @@ describe("moveBlock", () => {
 describe("moveBlockTo", () => {
   it("põe o bloco antes ou depois do alvo", () => {
     const layout = defaultLayout();
-    expect(moveBlockTo(layout, "recentes", "saldo", "before").order.slice(0, 3)).toEqual(["kpis", "recentes", "saldo"]);
-    expect(moveBlockTo(layout, "kpis", "metas", "after").order.slice(-3)).toEqual(["metas", "kpis", "recentes"]);
+    expect(moveBlockTo(layout, "recentes", "kpis", "before").order.slice(0, 3)).toEqual(["saldo", "insights", "recentes"]);
+    expect(moveBlockTo(layout, "saldo", "metas", "after").order.slice(-3)).toEqual(["metas", "saldo", "recentes"]);
   });
 
   it("mantém larguras, alturas e escondidos", () => {
     const layout = setBlockHidden(setBlockSpan(defaultLayout(), "metas", 8), "dividas", true);
-    const moved = moveBlockTo(layout, "metas", "kpis", "before");
+    const moved = moveBlockTo(layout, "metas", "saldo", "before");
     expect(moved.order[0]).toBe("metas");
     expect(moved.spans).toEqual(layout.spans);
     expect(moved.hidden).toEqual(["dividas"]);
@@ -92,8 +103,8 @@ describe("moveBlockTo", () => {
   it("devolve o mesmo layout quando nada muda", () => {
     const layout = defaultLayout();
     expect(moveBlockTo(layout, "saldo", "saldo", "after")).toBe(layout);
-    expect(moveBlockTo(layout, "saldo", "patrimonio", "before")).toBe(layout);
-    expect(moveBlockTo(layout, "saldo", "kpis", "after")).toBe(layout);
+    expect(moveBlockTo(layout, "saldo", "insights", "before")).toBe(layout);
+    expect(moveBlockTo(layout, "insights", "saldo", "after")).toBe(layout);
   });
 });
 
@@ -122,7 +133,7 @@ describe("setBlockHeight", () => {
   });
 
   it("ignora altura inválida no cookie, mantendo a largura", () => {
-    const layout = parseLayout("2|metas:12:50,recentes:8:abc,saldo:10:300");
+    const layout = parseLayout("3|metas:12:50,recentes:8:abc,saldo:10:300");
     expect(layout.heights).toEqual({ saldo: 300 });
     expect(layout.spans.metas).toBe(12);
   });
