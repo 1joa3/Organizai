@@ -71,6 +71,32 @@ export async function addAmountToGoal(id: string, formData: FormData) {
   return { success: true };
 }
 
+/** Tira dinheiro da meta; não deixa o valor guardado ficar negativo. */
+export async function withdrawFromGoal(id: string, formData: FormData) {
+  const { id: userId } = await requireUser();
+  const parsed = goalContributionSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { amount } = parsed.data;
+
+  try {
+    // A condição no where faz a conferência e o desconto de uma vez só
+    const result = await prisma.goal.updateMany({
+      where: { id, userId, currentAmount: { gte: amount } },
+      data: { currentAmount: { decrement: amount } },
+    });
+    if (result.count === 0) {
+      const goal = await prisma.goal.findFirst({ where: { id, userId }, select: { id: true } });
+      return { error: goal ? "O valor é maior do que o guardado na meta." : "Meta não encontrada." };
+    }
+  } catch (error) {
+    console.error("Error withdrawing from goal:", error);
+    return { error: "Erro interno ao registrar a retirada." };
+  }
+
+  revalidate();
+  return { success: true };
+}
+
 export async function getGoals() {
   const { id: userId } = await requireUser();
   return prisma.goal.findMany({

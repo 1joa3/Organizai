@@ -20,16 +20,11 @@ import {
   periodLabel,
   formatPeriod,
   previousRange,
-  parseISODate,
+  todayInBrazil,
   toISODate,
 } from "@/lib/period";
 import { buildInsights, buildPace } from "@/lib/dashboardStory";
 
-/** Dia de hoje no Brasil (o servidor roda em UTC) */
-function todayInBrazil() {
-  const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-  return parseISODate(iso) ?? new Date();
-}
 
 export const dynamic = "force-dynamic";
 

@@ -40,6 +40,12 @@ export function parseISODate(value: string): Date | null {
   return date;
 }
 
+/** Dia de hoje no Brasil, à meia-noite local (o servidor roda em UTC) */
+export function todayInBrazil(now = new Date()): Date {
+  const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(now);
+  return parseISODate(iso) ?? now;
+}
+
 export function toISODate(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
