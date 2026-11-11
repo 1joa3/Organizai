@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
@@ -27,6 +27,19 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "OrganizAI — Finanças Pessoais",
   description: "Controle financeiro de alta performance",
+  applicationName: "OrganizAI",
+  // iPhone: abre em tela cheia quando adicionado à Tela de Início
+  appleWebApp: { capable: true, title: "OrganizAI", statusBarStyle: "black" },
+};
+
+export const viewport: Viewport = {
+  // Cor da barra do sistema, acompanhando o fundo do tema
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#030303" },
+    { media: "(prefers-color-scheme: light)", color: "#F4F5F7" },
+  ],
+  // Ocupa a tela toda no iPhone; a barra inferior já desconta a área do gesto
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -41,7 +41,7 @@ export default function ClientLayout({
             isExpanded ? "md:pl-64" : "md:pl-20"
           }`}
         >
-          <main className="flex-1 p-4 pb-24 sm:p-6 md:p-8 lg:p-10 md:pb-8 relative z-0 w-full">
+          <main className="flex-1 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 md:p-8 lg:p-10 md:pb-8 relative z-0 w-full">
             <div className="max-w-7xl mx-auto w-full">{children}</div>
           </main>
         </div>

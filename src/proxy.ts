@@ -35,5 +35,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg).*)"],
+  // Arquivos públicos ficam de fora: o manifesto e os ícones do app instalável
+  // precisam carregar antes do login
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|manifest.webmanifest|icons/).*)"],
 };
