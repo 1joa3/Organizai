@@ -154,6 +154,11 @@ export const goalSchema = z.object({
 export const goalContributionSchema = z.object({ amount: amount() });
 
 /** FormData → objeto simples (campos vazios viram undefined). */
+/** Limites mensais do orçamento: vazio ou zero tira o limite da categoria */
+export const budgetsSchema = z
+  .array(z.object({ categoryId: id("a categoria"), monthlyBudget: optionalAmount(null) }))
+  .max(200, "Categorias demais");
+
 export function formToObject(formData: FormData): Record<string, string | undefined> {
   const obj: Record<string, string | undefined> = {};
   formData.forEach((value, key) => {

@@ -20,13 +20,15 @@ model Account {
 }
 
 model Category {
-  id           String        @id @default(cuid())
-  userId       String? // dono (id do usuário no Supabase Auth); null = dado antigo ainda não reivindicado
-  name         String // "Moradia", "Alimentação"
-  type         String // receita | despesa
-  color        String // hex: "#F87171"
-  icon         String? // emoji ou ícone opcional
-  transactions Transaction[]
+  id            String        @id @default(cuid())
+  userId        String? // dono (id do usuário no Supabase Auth); null = dado antigo ainda não reivindicado
+  name          String // "Moradia", "Alimentação"
+  type          String // receita | despesa
+  color         String // hex: "#F87171"
+  icon          String? // emoji ou ícone opcional
+  /// Limite de gasto por mês (só despesas); null = sem orçamento
+  monthlyBudget Decimal?      @db.Decimal(12, 2)
+  transactions  Transaction[]
 
   @@index([userId])
 }

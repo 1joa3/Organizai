@@ -7,7 +7,9 @@ import {
   getGoalsSummary,
   getInstallmentsSummary,
   getDebtsSummary,
+  getBudgetCategories,
 } from "@/lib/aggregations";
+import { buildBudgets } from "@/lib/budget";
 import DashboardClient from "./DashboardClient";
 import { requireUser } from "@/lib/dal";
 import { cookies } from "next/headers";
@@ -50,6 +52,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     installmentsSummary,
     debtsSummary,
     previousTotals,
+    budgetCategories,
   ] = await Promise.all([
     getPeriodTotals(userId, range),
     getCategoryReport(userId, range),
@@ -60,6 +63,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     getInstallmentsSummary(userId, range),
     getDebtsSummary(userId),
     getPeriodTotals(userId, prevRange),
+    getBudgetCategories(userId),
   ]);
 
   // Resumo do período: ritmo de gastos e observações
@@ -72,6 +76,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     prevRange,
     todayInBrazil()
   );
+  const spentByCategory = Object.fromEntries(categoryReport.categories.map((c) => [c.categoryId, c.total]));
+  const budgets = buildBudgets(budgetCategories, spentByCategory, range, pace);
   const insights = buildInsights({
     current: categoryReport.transactions,
     previous: categoryReport.previousTransactions,
@@ -83,6 +89,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     previousName,
     installments: installmentsSummary,
     goals: goals.map((g) => ({ name: g.name, currentAmount: Number(g.currentAmount), targetAmount: Number(g.targetAmount) })),
+    budgets,
   });
 
   // Serializar transações recentes
@@ -117,6 +124,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       previousTotals={previousTotals}
       pace={pace}
       insights={insights}
+      budget={{ summary: budgets, categories: budgetCategories, spentByCategory, periodWord: period.kind === "month" ? "mês" : "período" }}
       previousName={previousName}
       rangeStart={toISODate(range.start)}
       firstName={name?.trim().split(/\s+/)[0] ?? null}

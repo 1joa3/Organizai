@@ -55,7 +55,7 @@ describe("parseLayout / formatLayout", () => {
 
   it("bloco ausente entra logo depois do que o antecede na ordem padrão", () => {
     const layout = parseLayout("recentes:4,saldo:5,kpis:12");
-    expect(layout.order.slice(0, 5)).toEqual(["saldo", "insights", "recentes", "kpis", "patrimonio"]);
+    expect(layout.order.slice(0, 5)).toEqual(["saldo", "insights", "recentes", "kpis", "orcamento"]);
     expect(layout.order).toHaveLength(defaultLayout().order.length);
   });
 });
@@ -63,7 +63,7 @@ describe("parseLayout / formatLayout", () => {
 describe("layout de antes do resumo", () => {
   it("leva o resumo para o topo, visível, na largura padrão e sem altura fixa", () => {
     const layout = parseLayout("2|kpis:24,!saldo:10:500,patrimonio:14:420,metas:12");
-    expect(layout.order.slice(0, 4)).toEqual(["saldo", "insights", "kpis", "patrimonio"]);
+    expect(layout.order.slice(0, 4)).toEqual(["saldo", "insights", "kpis", "orcamento"]);
     expect(layout.hidden).toEqual([]);
     expect(layout.spans.saldo).toBe(16);
     expect(layout.heights).toEqual({ patrimonio: 420 });
@@ -75,7 +75,7 @@ describe("moveBlock", () => {
   it("troca com o vizinho visível, pulando os escondidos", () => {
     const layout = setBlockHidden(defaultLayout(), "insights", true);
     const moved = moveBlock(layout, "kpis", -1);
-    expect(visibleBlocks(moved).slice(0, 3)).toEqual(["kpis", "saldo", "patrimonio"]);
+    expect(visibleBlocks(moved).slice(0, 3)).toEqual(["kpis", "saldo", "orcamento"]);
   });
 
   it("não sai das pontas", () => {

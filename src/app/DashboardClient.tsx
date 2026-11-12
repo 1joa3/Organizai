@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import HeroSaldo from "@/components/dashboard/HeroSaldo";
 import KpiStrip from "@/components/dashboard/KpiStrip";
 import Insights from "@/components/dashboard/Insights";
+import BudgetCard from "@/components/dashboard/BudgetCard";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import DonutCategories from "@/components/charts/DonutCategories";
 import CategoryTrendChart from "@/components/charts/CategoryTrendChart";
@@ -33,6 +34,7 @@ import {
 } from "@/lib/dashboardLayout";
 import type { CategoryRow } from "@/lib/categoryBreakdown";
 import type { Insight, Pace } from "@/lib/dashboardStory";
+import type { BudgetCategory, BudgetSummary } from "@/lib/budget";
 import { formatCurrency, formatMonthYear, calcPercent } from "@/lib/formatters";
 
 interface Props {
@@ -40,6 +42,12 @@ interface Props {
   previousTotals: { receitas: number; despesas: number; saldo: number };
   pace: Pace;
   insights: Insight[];
+  budget: {
+    summary: BudgetSummary;
+    categories: BudgetCategory[];
+    spentByCategory: Record<string, number>;
+    periodWord: string;
+  };
   /** "outubro" quando o período é um mês; null nos demais */
   previousName: string | null;
   /** Primeiro dia do período, "2026-11-01" */
@@ -100,6 +108,7 @@ export default function DashboardClient({
   previousTotals,
   pace,
   insights,
+  budget,
   previousName,
   rangeStart,
   firstName,
@@ -262,6 +271,7 @@ export default function DashboardClient({
       </div>
     ),
     insights: <Insights insights={insights} />,
+    orcamento: <BudgetCard {...budget} />,
     // Gráfico de evolução patrimonial
     patrimonio: (
       <motion.div

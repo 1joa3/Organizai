@@ -6,6 +6,7 @@
  */
 
 import type { DateRange } from "./period";
+import type { BudgetSummary } from "./budget";
 
 export interface StoryExpense {
   amount: number;
@@ -131,6 +132,7 @@ export interface InsightInput {
   previousName: string | null;
   installments: { name: string; currentInstallment: number; totalInstallments: number }[];
   goals: { name: string; currentAmount: number; targetAmount: number }[];
+  budgets?: BudgetSummary;
 }
 
 const brl = (n: number) =>
@@ -168,6 +170,45 @@ export function buildInsights(input: InsightInput): Insight[] {
         tone: "bad",
         title: `Saiu ${pct(rate)} a mais do que entrou`,
         detail: `${brl(despesas - receitas)} acima das receitas`,
+      });
+    }
+  }
+
+  // Orçamento: o que passou do limite ou está gastando rápido demais
+  const budgets = input.budgets;
+  if (budgets && budgets.items.length > 0) {
+    const over = budgets.items.filter((i) => i.status === "over");
+    const fast = budgets.items.filter((i) => i.status === "warning");
+    const period = previousName ? "do mês" : "do período";
+    if (over.length > 0) {
+      const names = over.map((i) => i.name);
+      insights.push({
+        id: "orcamento",
+        tone: "bad",
+        title: over.length === 1 ? `${over[0].name} passou do orçamento` : `${over.length} categorias passaram do orçamento`,
+        detail:
+          over.length === 1
+            ? `${brl(over[0].spent)} de ${brl(over[0].limit)} — ${brl(-over[0].remaining)} acima`
+            : names.length <= 3
+              ? names.join(", ")
+              : `${names.slice(0, 2).join(", ")} e mais ${names.length - 2}`,
+      });
+    } else if (fast.length > 0) {
+      const top = fast[0];
+      insights.push({
+        id: "orcamento",
+        tone: "bad",
+        title: budgets.ongoing ? `${top.name} está gastando rápido` : `${top.name} ficou perto do limite`,
+        detail: budgets.ongoing
+          ? `${pct(top.ratio)} do orçamento usado com ${pct(budgets.expected)} ${period}`
+          : `${brl(top.spent)} de ${brl(top.limit)}`,
+      });
+    } else if (!budgets.ongoing && budgets.expected >= 1) {
+      insights.push({
+        id: "orcamento",
+        tone: "good",
+        title: "Todas as categorias dentro do orçamento",
+        detail: `${brl(budgets.spent)} de ${brl(budgets.limit)} planejados`,
       });
     }
   }

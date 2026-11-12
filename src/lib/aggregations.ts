@@ -351,3 +351,13 @@ export async function getCategoryReport(userId: string, range: DateRange) {
     previousTransactions: before,
   };
 }
+
+/** Categorias de despesa com o limite mensal do orçamento */
+export async function getBudgetCategories(userId: string) {
+  const rows = await prisma.category.findMany({
+    where: { userId, type: "despesa" },
+    select: { id: true, name: true, color: true, monthlyBudget: true },
+    orderBy: { name: "asc" },
+  });
+  return rows.map((c) => ({ ...c, monthlyBudget: c.monthlyBudget === null ? null : Number(c.monthlyBudget) }));
+}

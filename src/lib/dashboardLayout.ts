@@ -19,6 +19,7 @@ export const DASHBOARD_BLOCKS = [
   { id: "saldo", label: "Resumo do Período", defaultSpan: 16 },
   { id: "insights", label: "Observações", defaultSpan: 8 },
   { id: "kpis", label: "Indicadores", defaultSpan: 24 },
+  { id: "orcamento", label: "Orçamento", defaultSpan: 24 },
   { id: "patrimonio", label: "Evolução Patrimonial", defaultSpan: 14 },
   { id: "categorias", label: "Despesas por Categoria", defaultSpan: 10 },
   { id: "dividas", label: "Quitação de Dívidas", defaultSpan: 24 },
