@@ -1,5 +1,6 @@
 "use client";
 
+import { listReveal } from "@/lib/listReveal";
 import { ReactNode, useState } from "react";
 import { motion } from "framer-motion";
 
@@ -67,9 +68,7 @@ export default function Table<T extends Record<string, unknown>>({
               {sortedData.map((item, i) => (
                 <motion.div
                   key={keyExtractor(item)}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
+                  {...listReveal(i)}
                   onClick={onRowClick ? () => onRowClick(item) : undefined}
                   className={onRowClick ? "cursor-pointer" : undefined}
                 >
@@ -126,9 +125,7 @@ export default function Table<T extends Record<string, unknown>>({
             ) : (
               sortedData.map((item, i) => (
                 <motion.tr
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
+                  {...listReveal(i)}
                   key={keyExtractor(item)}
                   onClick={onRowClick ? () => onRowClick(item) : undefined}
                   className={`

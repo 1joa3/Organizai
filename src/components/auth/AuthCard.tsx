@@ -1,15 +1,29 @@
 import Logo from "@/components/ui/Logo";
+import AuthBackground from "./AuthBackground";
+import CardSpotlight from "@/components/ui/CardSpotlight";
+import BlurText from "@/components/reactbits/BlurText";
 
 /** Moldura das telas de autenticação: logo, título e o conteúdo. */
 export default function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg px-4 py-10">
+    <div className="relative isolate min-h-screen flex items-center justify-center bg-bg px-4 py-10">
+      <AuthBackground />
       <div className="w-full max-w-sm space-y-6">
         <div className="flex justify-center">
           <Logo size={48} wordmarkClassName="text-3xl" />
         </div>
-        <div className="glass-card p-8">
-          <h1 className="font-display text-xl text-fg">{title}</h1>
+        <div className="relative glass-card p-8">
+          <CardSpotlight />
+          <BlurText
+            tag="h1"
+            text={title}
+            animateBy="letters"
+            delay={35}
+            distance={10}
+            blur={6}
+            trigger="load"
+            className="font-display text-xl text-fg"
+          />
           {subtitle && <p className="text-sm text-text-dim mt-1">{subtitle}</p>}
           <div className="mt-6">{children}</div>
         </div>

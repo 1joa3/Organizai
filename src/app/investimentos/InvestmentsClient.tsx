@@ -1,5 +1,6 @@
 "use client";
 
+import PageTitle from "@/components/ui/PageTitle";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
@@ -53,7 +54,7 @@ export default function InvestmentsClient({ investments }: { investments: Serial
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Investimentos</h1>
+          <PageTitle text="Investimentos" />
           <p className="text-sm text-text-dim mt-1">Acompanhe sua carteira</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>Novo Aporte</Button>

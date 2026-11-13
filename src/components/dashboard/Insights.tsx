@@ -1,5 +1,6 @@
 "use client";
 
+import CardSpotlight from "@/components/ui/CardSpotlight";
 import { motion } from "framer-motion";
 import type { Insight, InsightTone } from "@/lib/dashboardStory";
 
@@ -40,8 +41,9 @@ export default function Insights({ insights }: { insights: Insight[] }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="h-full glass-card p-6 flex flex-col"
+      className="relative h-full glass-card p-6 flex flex-col"
     >
+      <CardSpotlight />
       <h2 className="font-display text-lg text-fg mb-5">Observações</h2>
       {insights.length === 0 ? (
         <div className="flex-1 flex items-center justify-center p-6 text-center text-sm text-text-muted border border-dashed border-fg/10 rounded-lg">

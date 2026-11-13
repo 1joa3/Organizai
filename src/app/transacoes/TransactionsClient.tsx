@@ -1,5 +1,10 @@
 "use client";
 
+import Checkbox from "@/components/ui/Checkbox";
+import GlideSelect from "@/components/reactbits/GlideSelect";
+import { listReveal } from "@/lib/listReveal";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import PageTitle from "@/components/ui/PageTitle";
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
@@ -300,22 +305,18 @@ export default function TransactionsClient({
     {
       key: "select",
       label: (
-        <input
-          type="checkbox"
+        <Checkbox
           checked={filtered.length > 0 && selectedIds.size === filtered.length}
           onChange={toggleSelectAll}
-          className="w-4 h-4 accent-blue cursor-pointer"
-          aria-label="Selecionar todas"
+          ariaLabel="Selecionar todas"
         />
       ),
       className: "w-10",
       render: (t: SerializedTransaction) => (
-        <input
-          type="checkbox"
+        <Checkbox
           checked={selectedIds.has(t.id)}
           onChange={() => toggleSelect(t.id)}
-          className="w-4 h-4 accent-blue cursor-pointer"
-          aria-label="Selecionar transação"
+          ariaLabel="Selecionar transação"
         />
       ),
     },
@@ -415,18 +416,17 @@ export default function TransactionsClient({
           selected ? "border-blue/40!" : ""
         }`}
       >
-        <label
+        <span
           onClick={(e) => e.stopPropagation()}
-          className="-m-2 p-2 shrink-0 flex items-center cursor-pointer"
+          onKeyDown={(e) => e.stopPropagation()}
+          className="-m-2 p-2 shrink-0 flex items-center"
         >
-          <input
-            type="checkbox"
+          <Checkbox
             checked={selected}
             onChange={() => toggleSelect(t.id)}
-            className="w-4 h-4 accent-blue cursor-pointer"
-            aria-label={`Selecionar ${t.description}`}
+            ariaLabel={`Selecionar ${t.description}`}
           />
-        </label>
+        </span>
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner shrink-0"
           style={{
@@ -465,7 +465,7 @@ export default function TransactionsClient({
         className="flex flex-wrap justify-between items-center gap-4"
       >
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Transações</h1>
+          <PageTitle text="Transações" />
           <p className="text-sm text-text-dim mt-1">Gerencie suas receitas e despesas</p>
         </div>
         {/* No celular, o botão flutuante "+" faz o mesmo */}
@@ -556,7 +556,7 @@ export default function TransactionsClient({
             </p>
             <p className={`font-mono-value mt-1 truncate ${label === "Saldo" ? "text-xl" : "text-base"} sm:text-xl ${color}`}>
               {label === "Saldo" && value < 0 ? "−" : ""}
-              {formatCurrency(Math.abs(value))}
+              <AnimatedNumber value={Math.abs(value)} duration={0.9} />
             </p>
           </div>
         ))}
@@ -576,16 +576,17 @@ export default function TransactionsClient({
           <div className="flex-1 basis-full sm:basis-auto flex items-center gap-2 min-w-0">
             {canBulkRecategorize ? (
               <>
-                <select
+                <GlideSelect
+                  size="sm"
+                  ariaLabel="Nova categoria"
+                  placeholder="Mudar categoria para..."
                   value={bulkCategoryId}
-                  onChange={(e) => setBulkCategoryId(e.target.value)}
-                  className="flex-1 sm:flex-none min-w-0 bg-fg/5 border border-fg/10 rounded-lg px-2.5 py-1.5 text-xs text-fg focus:border-blue focus:outline-none cursor-pointer"
-                >
-                  <option value="" className="bg-option">Mudar categoria para...</option>
-                  {bulkCategoryOptions.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-option">{c.name}</option>
-                  ))}
-                </select>
+                  onChange={setBulkCategoryId}
+                  options={bulkCategoryOptions.map((c) => ({ value: c.id, label: c.name }))}
+                  menuWidth={200}
+                  className="flex-1 sm:flex-none sm:w-52 min-w-0"
+                  triggerClassName="bg-fg/5 border border-fg/10 rounded-lg px-2.5 py-1.5 text-xs text-fg hover:border-fg/20 aria-expanded:border-blue focus-visible:border-blue"
+                />
                 <Button
                   variant="glass"
                   size="sm"
@@ -630,8 +631,10 @@ export default function TransactionsClient({
                 </span>
               </div>
               <div className="space-y-2">
-                {day.items.map((t) => (
-                  <div key={t.id}>{renderMobileItem(t)}</div>
+                {day.items.map((t, i) => (
+                  <motion.div key={t.id} {...listReveal(i)}>
+                    {renderMobileItem(t)}
+                  </motion.div>
                 ))}
               </div>
             </section>
@@ -758,16 +761,20 @@ export default function TransactionsClient({
                       placeholder="Nome da conta"
                       className="flex-1 min-w-0 px-3 py-2 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg placeholder:text-text-muted focus:border-blue focus:outline-none"
                     />
-                    <select
+                    <GlideSelect
+                      ariaLabel="Tipo da conta"
                       value={newAccountType}
-                      onChange={(e) => setNewAccountType(e.target.value)}
-                      className="px-2 py-2 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg focus:border-blue focus:outline-none cursor-pointer shrink-0"
-                      aria-label="Tipo da conta"
-                    >
-                      <option value="corrente" className="bg-option">Corrente</option>
-                      <option value="poupança" className="bg-option">Poupança</option>
-                      <option value="carteira" className="bg-option">Carteira</option>
-                    </select>
+                      onChange={setNewAccountType}
+                      options={[
+                        { value: "corrente", label: "Corrente" },
+                        { value: "poupança", label: "Poupança" },
+                        { value: "carteira", label: "Carteira" },
+                      ]}
+                      menuWidth={130}
+                      align="right"
+                      className="shrink-0 w-32"
+                      triggerClassName="px-3 py-2 text-sm bg-fg/5 text-fg border border-fg/10 rounded-lg hover:border-fg/20 aria-expanded:border-blue focus-visible:border-blue"
+                    />
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="sm" type="button" onClick={cancelNewAccount}>

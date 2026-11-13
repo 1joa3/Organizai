@@ -1,5 +1,7 @@
 "use client";
 
+import Checkbox from "@/components/ui/Checkbox";
+import GlideSelect from "@/components/reactbits/GlideSelect";
 import { Fragment, useState, useTransition, useMemo } from "react";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
@@ -489,15 +491,13 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
           Aplica essa categoria a todas as linhas — dá pra ajustar linha a linha na pré-visualização abaixo.
         </p>
 
-        <label className="flex items-center gap-2 text-xs text-text-dim cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={detectInstallments}
-            onChange={(e) => setDetectInstallments(e.target.checked)}
-            className="w-3.5 h-3.5 accent-blue cursor-pointer"
-          />
-          Detectar compra parcelada (ex: &ldquo;Loja - Parcela 2/6&rdquo;) e gerar as parcelas futuras automaticamente
-        </label>
+        <Checkbox
+          checked={detectInstallments}
+          onChange={setDetectInstallments}
+          size={16}
+          className="items-start! text-xs font-normal! leading-snug! [&>span:first-child]:mt-0.5"
+          label={<>Detectar compra parcelada (ex: &ldquo;Loja - Parcela 2/6&rdquo;) e gerar as parcelas futuras automaticamente</>}
+        />
         <p className="text-[11px] text-text-muted -mt-3 ml-5.5">
           Alguma compra não foi reconhecida? Use o botão &ldquo;Parcelar&rdquo; na linha dela, na pré-visualização.
         </p>
@@ -527,19 +527,16 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
                       </td>
                       <td className="px-2 py-2">
                         {r.valid ? (
-                          <select
+                          <GlideSelect
+                            size="sm"
+                            ariaLabel="Categoria da linha"
                             value={getRowCategoryId(r.sourceIndex)}
-                            onChange={(e) =>
-                              setCategoryOverride(r.sourceIndex, e.target.value)
-                            }
-                            className="w-full min-w-[88px] max-w-[110px] sm:max-w-[130px] bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg focus:border-blue focus:outline-none cursor-pointer"
-                          >
-                            {filteredCategories.map((c) => (
-                              <option key={c.id} value={c.id} className="bg-option">
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(v) => setCategoryOverride(r.sourceIndex, v)}
+                            options={filteredCategories.map((c) => ({ value: c.id, label: c.name }))}
+                            menuWidth={160}
+                            className="min-w-[88px] max-w-[110px] sm:max-w-[130px]"
+                            triggerClassName="bg-fg/5 border border-fg/10 rounded px-1.5 py-1 text-[11px] text-fg hover:border-fg/20 aria-expanded:border-blue focus-visible:border-blue"
+                          />
                         ) : (
                           <span className="text-text-muted">—</span>
                         )}

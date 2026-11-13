@@ -186,7 +186,11 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
                   <div className="absolute inset-0 bg-fg/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl pointer-events-none" />
                 )}
 
-                <span className={`relative z-10 shrink-0 ${isActive ? "text-blue drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""}`}>
+                <span
+                  className={`relative z-10 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110 group-active:scale-95 ${
+                    isActive ? "text-blue drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : "group-hover:-rotate-6"
+                  }`}
+                >
                   {item.icon}
                 </span>
                 <span className={`relative z-10 ${labelClass(isExpanded)}`}>{item.label}</span>
@@ -309,12 +313,18 @@ export function MobileBottomNav() {
                 isActive ? "text-blue" : "text-text-muted active:text-fg"
               }`}
             >
-              <span
-                className={`flex items-center justify-center w-14 h-8 rounded-full transition-colors duration-300 ${
-                  isActive ? "bg-blue/10 drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""
-                }`}
-              >
-                {item.icon}
+              <span className="relative flex items-center justify-center w-14 h-8 rounded-full">
+                {/* Indicador que desliza até a aba tocada */}
+                {isActive && (
+                  <motion.span
+                    layoutId="mobile-nav-active"
+                    className="absolute inset-0 rounded-full bg-blue/10 drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  />
+                )}
+                <motion.span className="relative" whileTap={{ scale: 0.85 }} transition={{ type: "spring", stiffness: 500, damping: 20 }}>
+                  {item.icon}
+                </motion.span>
               </span>
               {item.label}
             </Link>

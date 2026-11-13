@@ -1,5 +1,6 @@
 "use client";
 
+import PageTitle from "@/components/ui/PageTitle";
 import { useActionState } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
@@ -37,7 +38,7 @@ export default function ProfileClient({ name, email, createdAt }: ProfileClientP
   return (
     <div className="space-y-8 max-w-2xl">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Meu perfil</h1>
+        <PageTitle text="Meu perfil" />
         <p className="text-sm text-text-dim mt-1">Seus dados de acesso ao OrganizAI</p>
       </motion.div>
 

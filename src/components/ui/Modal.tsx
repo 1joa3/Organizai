@@ -35,7 +35,8 @@ export default function Modal({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      // Um campo aberto dentro da janela (lista suspensa) trata o Esc antes
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
     }
     if (isOpen) {
       document.addEventListener("keydown", handleKeyDown);

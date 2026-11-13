@@ -1,5 +1,6 @@
 "use client";
 
+import GlideSelect from "@/components/reactbits/GlideSelect";
 import { useEffect, useRef, useState } from "react";
 import {
   HEIGHT_STEP,
@@ -324,23 +325,22 @@ export default function ResizableBlock({
 
             {wide && (
               // Lista em vez de botões: cabe na barra até dos blocos de ¼
-              <label className="relative ml-0.5 pl-1 border-l border-fg/10 flex items-center" title="Largura do bloco">
-                <span className="sr-only">Largura de {label}</span>
-                <select
-                  value={span}
-                  onChange={(e) => onResizeEnd({ ...current, span: Number(e.target.value) })}
-                  className="h-7 appearance-none rounded-md bg-transparent pl-2 pr-6 font-mono-value text-[11px] text-text-dim hover:text-fg hover:bg-fg/10 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-blue"
-                >
-                  {Array.from({ length: MAX_SPAN - MIN_SPAN + 1 }, (_, i) => MIN_SPAN + i).map((n) => (
-                    <option key={n} value={n} className="bg-panel text-fg">
-                      {spanLabel(n)}
-                    </option>
-                  ))}
-                </select>
-                <svg width="10" height="10" viewBox="0 0 12 8" fill="none" className="absolute right-1.5 pointer-events-none text-text-muted">
-                  <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </label>
+              <div className="relative ml-0.5 pl-1 border-l border-fg/10 flex items-center" title="Largura do bloco">
+                <GlideSelect
+                  size="sm"
+                  ariaLabel={`Largura de ${label}`}
+                  value={String(span)}
+                  onChange={(v) => onResizeEnd({ ...current, span: Number(v) })}
+                  options={Array.from({ length: MAX_SPAN - MIN_SPAN + 1 }, (_, i) => MIN_SPAN + i).map((n) => ({
+                    value: String(n),
+                    label: spanLabel(n),
+                  }))}
+                  menuWidth={96}
+                  menuMaxHeight={240}
+                  align="right"
+                  triggerClassName="h-7 rounded-md pl-2 pr-1.5 font-mono-value text-[11px] text-text-dim hover:text-fg hover:bg-fg/10 aria-expanded:bg-fg/10 aria-expanded:text-fg focus-visible:ring-1 focus-visible:ring-blue"
+                />
+              </div>
             )}
 
             <button

@@ -1,5 +1,7 @@
 "use client";
 
+import CardSpotlight from "@/components/ui/CardSpotlight";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import { motion } from "framer-motion";
 import PaceChart from "@/components/charts/PaceChart";
 import { comparisonPhrase, type Pace } from "@/lib/dashboardStory";
@@ -67,6 +69,7 @@ export default function HeroSaldo({
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="relative overflow-hidden glass-card p-6 sm:p-8 min-h-full flex flex-col gap-6"
     >
+      <CardSpotlight size={420} />
       {/* Brilho do fundo: verde quando sobra, rosa quando falta */}
       <div
         className={`absolute -top-32 -left-24 w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none ${
@@ -82,17 +85,17 @@ export default function HeroSaldo({
             positive ? "text-fg" : "text-coral"
           }`}
         >
-          {formatCurrency(Math.abs(saldo))}
+          <AnimatedNumber value={Math.abs(saldo)} mode="roll" duration={1.6} />
         </p>
         <p className="text-sm text-text-dim mt-2">
           {receitas > 0 ? (
             <>
               <span className="whitespace-nowrap">
-                de <span className="font-mono-value text-emerald">{formatCurrency(receitas)}</span> que entraram
+                de <AnimatedNumber value={receitas} className="font-mono-value text-emerald" /> que entraram
               </span>
               {" · "}
               <span className="whitespace-nowrap">
-                saíram <span className="font-mono-value text-coral">{formatCurrency(despesas)}</span>
+                saíram <AnimatedNumber value={despesas} className="font-mono-value text-coral" />
               </span>
             </>
           ) : (

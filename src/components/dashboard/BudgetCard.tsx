@@ -1,5 +1,7 @@
 "use client";
 
+import CardSpotlight from "@/components/ui/CardSpotlight";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
@@ -35,9 +37,12 @@ function parseAmount(value: string) {
 function BudgetBar({ ratio, color, expected }: { ratio: number; color: string; expected: number | null }) {
   return (
     <div className="relative h-2 rounded-full bg-fg/10">
-      <div
-        className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-700"
-        style={{ width: `${Math.min(100, ratio * 100)}%`, backgroundColor: color }}
+      <motion.div
+        className="absolute inset-y-0 left-0 rounded-full"
+        initial={{ width: 0 }}
+        animate={{ width: `${Math.min(100, ratio * 100)}%` }}
+        transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+        style={{ backgroundColor: color }}
       />
       {expected !== null && expected > 0 && expected < 1 && (
         <div
@@ -123,14 +128,15 @@ export default function BudgetCard({ summary, categories, spentByCategory, perio
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="h-full glass-card p-6 flex flex-col"
+      className="relative h-full glass-card p-6 flex flex-col"
     >
+      <CardSpotlight />
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 mb-6">
         <div>
           <h2 className="font-display text-lg text-fg">Orçamento</h2>
           {summary.items.length > 0 && (
             <p className="text-xs text-text-dim mt-1">
-              <span className="font-mono-value text-fg">{formatCurrency(summary.spent)}</span> de{" "}
+              <AnimatedNumber value={summary.spent} className="font-mono-value text-fg" /> de{" "}
               {formatCurrency(summary.limit)} planejados
               {summary.ongoing && <> · faltam {summary.daysLeft} {summary.daysLeft === 1 ? "dia" : "dias"}</>}
             </p>

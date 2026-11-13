@@ -1,5 +1,8 @@
 "use client";
 
+import CardSpotlight from "@/components/ui/CardSpotlight";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import PageTitle from "@/components/ui/PageTitle";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HeroSaldo from "@/components/dashboard/HeroSaldo";
@@ -278,8 +281,9 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6 flex flex-col"
+        className="relative h-full glass-card p-6 flex flex-col"
       >
+        <CardSpotlight />
         <h2 className="font-display text-lg text-fg mb-6">
           Evolução Patrimonial
         </h2>
@@ -294,15 +298,16 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6 flex flex-col"
+        className="relative h-full glass-card p-6 flex flex-col"
       >
+        <CardSpotlight />
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <h2 className="font-display text-lg text-fg">Quitação de Dívidas</h2>
           <div className="flex flex-wrap gap-6 sm:gap-8">
             <div>
               <p className="text-[10px] font-medium text-text-dim uppercase tracking-wider mb-1">Total em dívidas</p>
               <p className="font-mono-value text-lg text-amber drop-shadow-[0_0_8px_rgba(255,184,0,0.3)]">
-                {formatCurrency(debtsSummary.totalDebt)}
+                <AnimatedNumber value={debtsSummary.totalDebt} />
               </p>
             </div>
             <div>
@@ -326,8 +331,9 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6 flex flex-col"
+        className="relative h-full glass-card p-6 flex flex-col"
       >
+        <CardSpotlight />
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 className="font-display text-lg text-fg">Despesas por Categoria</h2>
           <div className="flex gap-1 p-1 bg-fg/5 rounded-lg border border-fg/10">
@@ -364,8 +370,9 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6"
+        className="relative h-full glass-card p-6"
       >
+        <CardSpotlight />
         <h2 className="font-display text-lg text-fg mb-6 flex items-center justify-between">
           Despesas Parceladas
           <span className="text-xs font-sans text-text-muted uppercase tracking-widest">{installmentsSummary.length} ativas</span>
@@ -407,8 +414,9 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6 flex flex-col"
+        className="relative h-full glass-card p-6 flex flex-col"
       >
+        <CardSpotlight />
         <h2 className="font-display text-lg text-fg mb-6 flex items-center justify-between">
           Metas
           <span className="text-xs font-sans text-text-muted uppercase tracking-widest">{goals.length} ativas</span>
@@ -449,8 +457,9 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full glass-card p-6"
+        className="relative h-full glass-card p-6"
       >
+        <CardSpotlight />
         <h2 className="font-display text-lg text-fg mb-4">
           Recentes
         </h2>
@@ -470,10 +479,7 @@ export default function DashboardClient({
       >
         <div>
           <p className="text-xs text-blue uppercase tracking-widest font-medium mb-1">Dashboard</p>
-          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight" suppressHydrationWarning>
-            {greeting}
-            {firstName ? `, ${firstName}` : ""}
-          </h1>
+          <PageTitle text={firstName ? `${greeting}, ${firstName}` : greeting} />
         </div>
         <div className="flex items-center gap-3 w-full @xl/page:w-auto">
           <div className="flex-1 min-w-0 @xl/page:flex-none">

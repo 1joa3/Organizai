@@ -201,6 +201,9 @@ body::after {
 
 /* ─── Glassmorphism Cards ─── */
 .glass-card {
+  /* Contexto de empilhamento próprio: o brilho do Spotlight fica entre o
+     fundo do cartão e o conteúdo */
+  isolation: isolate;
   background: var(--bg-raised);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);

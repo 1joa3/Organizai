@@ -1,7 +1,8 @@
 "use client";
 
+import CardSpotlight from "@/components/ui/CardSpotlight";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import { motion } from "framer-motion";
-import { formatCurrency, formatReturn } from "@/lib/formatters";
 
 interface KpiStripProps {
   receitas: number;
@@ -32,7 +33,7 @@ export default function KpiStrip({ receitas, despesas, days, investido, retorno 
     {
       label: "Taxa de poupança",
       shortLabel: "Poupança",
-      value: rate === null ? "—" : `${Math.round(rate * 100)}%`,
+      value: rate === null ? "—" : <AnimatedNumber value={Math.round(rate * 100)} format="percent" />,
       hint: "do que entrou ficou",
       color: rate === null ? "text-fg" : rate >= 0 ? "text-emerald" : "text-coral",
       glow: rate === null ? "" : glow(rate >= 0),
@@ -40,7 +41,7 @@ export default function KpiStrip({ receitas, despesas, days, investido, retorno 
     {
       label: "Gasto médio por dia",
       shortLabel: "Gasto/dia",
-      value: formatCurrency(perDay),
+      value: <AnimatedNumber value={perDay} />,
       hint: `em ${days} ${days === 1 ? "dia" : "dias"}`,
       color: "text-fg",
       glow: "",
@@ -48,14 +49,14 @@ export default function KpiStrip({ receitas, despesas, days, investido, retorno 
     {
       label: "Patrimônio Investido",
       shortLabel: "Investido",
-      value: formatCurrency(investido || 0),
+      value: <AnimatedNumber value={investido || 0} />,
       hint: "valor atual",
       color: "text-amber",
       glow: "drop-shadow-[0_0_8px_rgba(255,184,0,0.3)]",
     },
     {
       label: "Retorno",
-      value: formatReturn(retorno || 0),
+      value: <AnimatedNumber value={(retorno || 0) * 100} format="percent" decimals={2} signed />,
       hint: "dos investimentos",
       color: (retorno || 0) >= 0 ? "text-emerald" : "text-coral",
       glow: glow((retorno || 0) >= 0),
@@ -73,6 +74,7 @@ export default function KpiStrip({ receitas, despesas, days, investido, retorno 
           transition={{ delay: 0.1 + i * 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="glass-card p-3.5 @xl:p-5 relative overflow-hidden group min-w-0"
         >
+          <CardSpotlight size={200} />
           {/* Subtle top highlight */}
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 

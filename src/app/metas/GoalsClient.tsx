@@ -1,5 +1,8 @@
 "use client";
 
+import CardSpotlight from "@/components/ui/CardSpotlight";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import PageTitle from "@/components/ui/PageTitle";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
@@ -130,7 +133,7 @@ export default function GoalsClient({ items }: { items: Item[] }) {
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl text-fg tracking-tight">Metas</h1>
+          <PageTitle text="Metas" />
           <p className="text-sm text-text-dim mt-1">Planeje e acompanhe seus objetivos</p>
         </div>
         <Button onClick={() => setForm({})}>Nova Meta</Button>
@@ -141,17 +144,18 @@ export default function GoalsClient({ items }: { items: Item[] }) {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6"
+          className="relative glass-card p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6"
         >
+          <CardSpotlight />
           <div className="min-w-0">
             <p className="text-xs font-medium text-text-dim uppercase tracking-wider">Guardado</p>
-            <p className="font-mono-value text-2xl text-fg mt-1.5 whitespace-nowrap">{formatCurrency(totalSaved)}</p>
+            <p className="font-mono-value text-2xl text-fg mt-1.5 whitespace-nowrap"><AnimatedNumber value={totalSaved} /></p>
             <p className="text-xs text-text-muted mt-1">de {formatCurrency(totalTarget)} no total</p>
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-text-dim uppercase tracking-wider">Para cumprir os prazos</p>
             <p className="font-mono-value text-2xl text-blue mt-1.5 whitespace-nowrap">
-              {monthly > 0 ? `${formatCurrency(monthly)}/mês` : "—"}
+              {monthly > 0 ? <><AnimatedNumber value={monthly} />/mês</> : "—"}
             </p>
             <p className="text-xs text-text-muted mt-1">somando as metas com prazo</p>
           </div>
@@ -177,8 +181,9 @@ export default function GoalsClient({ items }: { items: Item[] }) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.08, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className={`glass-card p-6 flex flex-col ${done ? "border-emerald/25" : ""}`}
+              className={`relative glass-card p-6 flex flex-col ${done ? "border-emerald/25" : ""}`}
             >
+              <CardSpotlight />
               <div className="flex items-start justify-between gap-3 mb-5">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: goal.color, boxShadow: `0 0 8px ${goal.color}` }} />
@@ -191,11 +196,11 @@ export default function GoalsClient({ items }: { items: Item[] }) {
 
               <div className="flex items-baseline justify-between gap-3 mb-2.5">
                 <p className="text-sm text-text-dim min-w-0">
-                  <span className="font-mono-value text-2xl text-fg">{formatCurrency(goal.currentAmount)}</span>
+                  <AnimatedNumber value={goal.currentAmount} className="font-mono-value text-2xl text-fg" />
                   <span className="whitespace-nowrap"> de {formatCurrency(goal.targetAmount)}</span>
                 </p>
                 <span className="font-mono-value text-sm font-semibold" style={{ color: goal.color }}>
-                  {plan.percent}%
+                  <AnimatedNumber value={plan.percent} format="percent" />
                 </span>
               </div>
 
