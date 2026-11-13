@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import MoneyInput from "@/components/ui/MoneyInput";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import { createInvestment } from "./actions";
@@ -144,8 +145,8 @@ export default function InvestmentsClient({ investments }: { investments: Serial
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input name="investedAmount" label="Valor Investido" type="number" step="0.01" required />
-            <Input name="currentAmount" label="Valor Atual" type="number" step="0.01" required />
+            <MoneyInput name="investedAmount" label="Valor Investido" required />
+            <MoneyInput name="currentAmount" label="Valor Atual" required />
           </div>
 
           <Input name="date" label="Data do Aporte" type="date" required defaultValue={formatDateInput(new Date())} />

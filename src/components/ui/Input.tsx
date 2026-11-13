@@ -6,10 +6,12 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   hint?: string;
+  /** Texto fixo dentro do campo, à esquerda (ex.: "R$") */
+  prefix?: string;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, className = "", id, ...props }, ref) => {
+  ({ label, error, hint, prefix, className = "", id, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
     return (
@@ -23,6 +25,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           </label>
         )}
         <div className="relative">
+          {prefix && (
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-text-muted pointer-events-none">
+              {prefix}
+            </span>
+          )}
           <input
             ref={ref}
             id={inputId}
@@ -36,6 +43,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               transition-all duration-300
               shadow-inner
               ${error ? "border-coral focus:border-coral focus:ring-coral/10" : ""}
+              ${prefix ? "pl-11" : ""}
               ${className}
             `}
             {...props}

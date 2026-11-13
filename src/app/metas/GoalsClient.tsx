@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import MoneyInput from "@/components/ui/MoneyInput";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createGoal, updateGoal, deleteGoal, addAmountToGoal, withdrawFromGoal } from "./actions";
@@ -274,14 +275,11 @@ export default function GoalsClient({ items }: { items: Item[] }) {
             <Input name="name" label="Nome da Meta" required placeholder="Ex: Reserva de Emergência" defaultValue={editing?.name} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input name="targetAmount" label="Valor Alvo" type="number" step="0.01" min="0.01" required defaultValue={editing?.targetAmount} />
-              <Input
+              <MoneyInput name="targetAmount" label="Valor Alvo" required defaultValue={editing?.targetAmount} />
+              <MoneyInput
                 name="currentAmount"
                 label={editing ? "Valor Guardado" : "Valor Atual (Opcional)"}
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={editing?.currentAmount ?? 0}
+                defaultValue={editing?.currentAmount}
               />
             </div>
 
@@ -368,17 +366,13 @@ export default function GoalsClient({ items }: { items: Item[] }) {
               ))}
             </div>
 
-            <Input
+            <MoneyInput
               name="amount"
               label={movement.kind === "add" ? "Valor do Aporte" : "Valor da Retirada"}
-              type="number"
-              step="0.01"
-              min="0.01"
-              max={movement.kind === "withdraw" ? movement.item.goal.currentAmount : undefined}
               required
               autoFocus
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onValueChange={setAmount}
               hint={
                 movement.kind === "withdraw"
                   ? `Guardado na meta: ${formatCurrency(movement.item.goal.currentAmount)}`

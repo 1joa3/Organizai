@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { saveBudgets } from "@/lib/budgetActions";
 import type { BudgetCategory, BudgetItem, BudgetStatus, BudgetSummary } from "@/lib/budget";
 import { formatCurrency } from "@/lib/formatters";
+import { moneyDisplay, moneyFromTyping, moneyValue } from "@/lib/moneyInput";
 
 interface BudgetCardProps {
   summary: BudgetSummary;
@@ -92,7 +93,7 @@ export default function BudgetCard({ summary, categories, spentByCategory, perio
 
   function openEditor() {
     setValues(
-      Object.fromEntries(categories.map((c) => [c.id, c.monthlyBudget ? String(c.monthlyBudget) : ""]))
+      Object.fromEntries(categories.map((c) => [c.id, moneyValue(c.monthlyBudget)]))
     );
     setOpen(true);
   }
@@ -203,13 +204,12 @@ export default function BudgetCard({ summary, categories, spentByCategory, perio
                       </span>
                       <input
                         id={`budget-${c.id}`}
-                        type="number"
-                        inputMode="decimal"
-                        step="0.01"
-                        min="0"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
                         placeholder="Sem limite"
-                        value={values[c.id] ?? ""}
-                        onChange={(e) => setValues((v) => ({ ...v, [c.id]: e.target.value }))}
+                        value={moneyDisplay(values[c.id])}
+                        onChange={(e) => setValues((v) => ({ ...v, [c.id]: moneyFromTyping(e.target.value) }))}
                         className="w-full pl-9 pr-3 py-2 text-sm font-mono-value bg-fg/5 text-fg border border-fg/10 rounded-lg placeholder:text-text-muted placeholder:font-sans hover:border-fg/20 focus:border-blue focus:outline-none focus:ring-4 focus:ring-blue/10 transition-colors"
                       />
                     </div>

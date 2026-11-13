@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import MoneyInput from "@/components/ui/MoneyInput";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import Table from "@/components/ui/Table";
@@ -714,13 +715,11 @@ export default function TransactionsClient({
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
+            <MoneyInput
+              key={editingTransaction?.id ?? "new"}
               name="amount"
               label="Valor Total"
-              type="number"
-              step="0.01"
               required
-              placeholder="0.00"
               defaultValue={editingTransaction?.amount}
             />
             <Input
