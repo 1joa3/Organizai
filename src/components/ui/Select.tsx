@@ -1,5 +1,6 @@
 "use client";
 
+import { shake } from "@/lib/shake";
 import { useState, type ChangeEvent } from "react";
 import GlideSelect from "@/components/reactbits/GlideSelect";
 
@@ -63,7 +64,7 @@ export default function Select({
           {label}
         </label>
       )}
-      <div className="relative">
+      <div className="relative t-shake">
         <GlideSelect
           id={selectId}
           options={choices}
@@ -88,6 +89,7 @@ export default function Select({
             value={current}
             required={required}
             onChange={() => {}}
+            onInvalid={(e) => shake(e.currentTarget.parentElement)}
             className="absolute inset-x-0 bottom-0 h-px opacity-0 pointer-events-none"
           />
         )}

@@ -22,8 +22,9 @@ const variantStyles: Record<ButtonVariant, string> = {
 };
 
 const sizeStyles = {
-  sm: "px-4 py-2 text-xs",
-  md: "px-5 py-2.5 text-sm",
+  // No celular, alvo de toque de 44px (Taste Skill)
+  sm: "px-4 py-2 text-xs max-md:min-h-11",
+  md: "px-5 py-2.5 text-sm max-md:min-h-11",
   lg: "px-6 py-3 text-base",
 };
 
@@ -34,7 +35,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={`
           relative overflow-hidden inline-flex items-center justify-center gap-2
-          font-medium rounded-lg transition-all duration-300
+          font-medium rounded-lg
+          transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]
+          enabled:hover:-translate-y-px enabled:active:translate-y-0 enabled:active:scale-[0.97]
+          focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue
+          motion-reduce:transform-none!
           disabled:opacity-50 disabled:cursor-not-allowed
           cursor-pointer
           ${variantStyles[variant]}

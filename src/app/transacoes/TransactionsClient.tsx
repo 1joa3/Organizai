@@ -1,8 +1,8 @@
 "use client";
 
+import SegmentedTabs from "@/components/ui/SegmentedTabs";
 import Checkbox from "@/components/ui/Checkbox";
 import GlideSelect from "@/components/reactbits/GlideSelect";
-import { listReveal } from "@/lib/listReveal";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import PageTitle from "@/components/ui/PageTitle";
 import { useState, useTransition } from "react";
@@ -631,10 +631,8 @@ export default function TransactionsClient({
                 </span>
               </div>
               <div className="space-y-2">
-                {day.items.map((t, i) => (
-                  <motion.div key={t.id} {...listReveal(i)}>
-                    {renderMobileItem(t)}
-                  </motion.div>
+                {day.items.map((t) => (
+                  <div key={t.id}>{renderMobileItem(t)}</div>
                 ))}
               </div>
             </section>
@@ -682,30 +680,17 @@ export default function TransactionsClient({
             <label className="text-xs font-medium text-text-dim uppercase tracking-wider mb-2 block">
               Tipo
             </label>
-            <div className="flex gap-2 p-1 bg-fg/5 rounded-lg border border-fg/10">
-              <button
-                type="button"
-                onClick={() => setSelectedType("despesa")}
-                className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer ${
-                  selectedType === "despesa"
-                    ? "bg-coral/15 text-coral border border-coral/30"
-                    : "text-text-dim hover:text-fg border border-transparent"
-                }`}
-              >
-                − Despesa
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedType("receita")}
-                className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer ${
-                  selectedType === "receita"
-                    ? "bg-emerald/15 text-emerald border border-emerald/30"
-                    : "text-text-dim hover:text-fg border border-transparent"
-                }`}
-              >
-                + Receita
-              </button>
-            </div>
+            <SegmentedTabs
+              full
+              ariaLabel="Tipo"
+              value={selectedType as "despesa" | "receita"}
+              onChange={setSelectedType}
+              tabClassName="text-sm font-semibold h-10!"
+              options={[
+                { value: "despesa", label: "− Despesa", tone: "var(--coral)" },
+                { value: "receita", label: "+ Receita", tone: "var(--emerald)" },
+              ]}
+            />
             <input type="hidden" name="type" value={selectedType} />
           </div>
 

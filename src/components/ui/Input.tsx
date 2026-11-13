@@ -1,5 +1,6 @@
 "use client";
 
+import { shake } from "@/lib/shake";
 import { InputHTMLAttributes, forwardRef } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -11,7 +12,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, prefix, className = "", id, ...props }, ref) => {
+  ({ label, error, hint, prefix, className = "", id, onInvalid, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
     return (
@@ -24,7 +25,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <div className="relative">
+        <div className="relative t-shake">
           {prefix && (
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-text-muted pointer-events-none">
               {prefix}
@@ -47,6 +48,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               ${className}
             `}
             {...props}
+            // Campo obrigatório vazio ou inválido no envio: balança
+            onInvalid={(e) => {
+              shake(e.currentTarget.parentElement);
+              onInvalid?.(e);
+            }}
           />
         </div>
         {error && (

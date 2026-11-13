@@ -10,7 +10,8 @@
  * - escolher é por clique/toque na opção (o "arrastar para escolher" do
  *   original impedia rolar a lista no celular);
  * - ícones em SVG próprio (sem @hugeicons) e cores nas variáveis do tema;
- * - o botão aceita classes para ficar com a cara dos outros campos.
+ * - o botão aceita classes para ficar com a cara dos outros campos;
+ * - abrir/fechar nos tempos e escalas do "Menu dropdown" da transitions.dev.
  */
 
 import React, { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
@@ -94,7 +95,7 @@ const GlideSelect: React.FC<GlideSelectProps> = ({
   menuMaxHeight = 280,
   placement = 'bottom',
   align = 'left',
-  popDuration = 180,
+  popDuration = 250,
   glideDuration = 220,
   disabled = false,
   ariaLabel,
@@ -123,7 +124,8 @@ const GlideSelect: React.FC<GlideSelectProps> = ({
   const id = idProp ?? autoId;
   const S = SIZES[size] ?? SIZES.md;
   const step = S.row + GAP;
-  const popOut = Math.round((popDuration * 2) / 3);
+  // Fecha mais rápido do que abre ("Menu dropdown" da transitions.dev: 250ms / 150ms)
+  const popOut = Math.round(popDuration * 0.6);
 
   // Posição do menu: abaixo do botão, ou acima quando não cabe
   const place = () => {
@@ -306,7 +308,7 @@ const GlideSelect: React.FC<GlideSelectProps> = ({
     phase !== 'closed' && pos ? (
       <div
         ref={menuRef}
-        className="fixed z-[80] scale-95 p-1 opacity-0 rounded-xl border border-fg/10 bg-option shadow-[0_16px_40px_-8px_var(--shadow)] [transform-origin:var(--gs-origin)] [transition:opacity_var(--gs-pop)_cubic-bezier(0.23,1,0.32,1),transform_var(--gs-pop)_cubic-bezier(0.23,1,0.32,1)] data-[state=open]:scale-100 data-[state=open]:opacity-100 data-[state=closed]:pointer-events-none data-[state=closed]:[transition-duration:var(--gs-pop-out)] motion-reduce:[transform:none]! motion-reduce:[transition:opacity_var(--gs-pop)_ease]"
+        className="fixed z-[80] scale-[0.97] p-1 opacity-0 rounded-xl border border-fg/10 bg-option shadow-[0_16px_40px_-8px_var(--shadow)] [transform-origin:var(--gs-origin)] [transition:opacity_var(--gs-pop)_cubic-bezier(0.23,1,0.32,1),transform_var(--gs-pop)_cubic-bezier(0.23,1,0.32,1)] data-[state=open]:scale-100 data-[state=open]:opacity-100 data-[state=closed]:pointer-events-none data-[state=closed]:[transition-duration:var(--gs-pop-out)] motion-reduce:[transform:none]! motion-reduce:[transition:opacity_var(--gs-pop)_ease]"
         style={{ ...vars, left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width }}
         data-state="open"
       >

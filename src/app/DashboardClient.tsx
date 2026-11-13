@@ -1,5 +1,6 @@
 "use client";
 
+import SegmentedTabs from "@/components/ui/SegmentedTabs";
 import CardSpotlight from "@/components/ui/CardSpotlight";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import PageTitle from "@/components/ui/PageTitle";
@@ -336,24 +337,16 @@ export default function DashboardClient({
         <CardSpotlight />
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 className="font-display text-lg text-fg">Despesas por Categoria</h2>
-          <div className="flex gap-1 p-1 bg-fg/5 rounded-lg border border-fg/10">
-            {([
-              ["distribuicao", "Distribuição"],
-              ["evolucao", "Evolução"],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setCategoryView(value)}
-                aria-pressed={categoryView === value}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                  categoryView === value ? "bg-fg/10 text-fg" : "text-text-muted hover:text-fg"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs
+            ariaLabel="Visualização"
+            value={categoryView}
+            onChange={setCategoryView}
+            tabClassName="text-xs font-medium h-7! px-2.5!"
+            options={[
+              { value: "distribuicao", label: "Distribuição" },
+              { value: "evolucao", label: "Evolução" },
+            ]}
+          />
         </div>
         <div className="flex-1">
           {categoryView === "distribuicao" ? (

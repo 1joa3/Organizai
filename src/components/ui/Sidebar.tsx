@@ -169,7 +169,7 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 title={!isExpanded ? item.label : undefined}
-                className={`relative flex items-center gap-3 h-12 pl-[18px] rounded-xl text-sm font-medium transition-colors duration-200 group ${
+                className={`relative flex items-center gap-3 h-12 pl-[18px] rounded-xl text-sm font-medium transition-colors duration-200 group focus-visible:outline-2 focus-visible:outline-blue ${
                   isActive ? "text-fg" : "text-text-muted hover:text-fg"
                 }`}
               >
@@ -188,7 +188,7 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
 
                 <span
                   className={`relative z-10 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110 group-active:scale-95 ${
-                    isActive ? "text-blue drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : "group-hover:-rotate-6"
+                    isActive ? "text-blue drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""
                   }`}
                 >
                   {item.icon}
@@ -256,10 +256,11 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
           <motion.div
             ref={userMenuRef}
             role="menu"
-            initial={{ opacity: 0, x: -6, scale: 0.97 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -6, scale: 0.97 }}
-            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            // "Menu dropdown" da transitions.dev: cresce do canto do botão
+            // (0,97 → 1) em 250ms e fecha em 150ms
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+            exit={{ opacity: 0, scale: 0.99, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }}
             className="absolute bottom-6 left-full ml-3 w-60 rounded-xl border border-fg/10 bg-panel p-1.5 shadow-[0_16px_48px_-8px_var(--shadow)] z-50 origin-bottom-left"
           >
             <div className="px-3 py-2.5 border-b border-fg/5 mb-1">
@@ -309,7 +310,7 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`relative flex-1 flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium transition-colors duration-300 ${
+              className={`relative flex-1 flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium transition-colors duration-300 rounded-xl focus-visible:outline-2 focus-visible:outline-blue ${
                 isActive ? "text-blue" : "text-text-muted active:text-fg"
               }`}
             >

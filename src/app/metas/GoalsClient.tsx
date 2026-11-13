@@ -1,5 +1,6 @@
 "use client";
 
+import SegmentedTabs from "@/components/ui/SegmentedTabs";
 import CardSpotlight from "@/components/ui/CardSpotlight";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import PageTitle from "@/components/ui/PageTitle";
@@ -350,26 +351,17 @@ export default function GoalsClient({ items }: { items: Item[] }) {
       >
         {movement && preview && (
           <form onSubmit={handleMovement} className="space-y-5">
-            <div className="flex gap-1 p-1 bg-fg/5 rounded-lg border border-fg/10" role="radiogroup" aria-label="Tipo">
-              {([
-                ["add", "Aportar"],
-                ["withdraw", "Retirar"],
-              ] as const).map(([kind, label]) => (
-                <button
-                  key={kind}
-                  type="button"
-                  role="radio"
-                  aria-checked={movement.kind === kind}
-                  disabled={kind === "withdraw" && movement.item.goal.currentAmount <= 0}
-                  onClick={() => setMovement({ ...movement, kind })}
-                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                    movement.kind === kind ? "bg-fg/10 text-fg" : "text-text-muted hover:text-fg"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <SegmentedTabs
+              full
+              ariaLabel="Tipo"
+              value={movement.kind}
+              onChange={(kind) => setMovement({ ...movement, kind })}
+              tabClassName="text-sm font-medium h-9!"
+              options={[
+                { value: "add", label: "Aportar" },
+                { value: "withdraw", label: "Retirar", disabled: movement.item.goal.currentAmount <= 0 },
+              ]}
+            />
 
             <MoneyInput
               name="amount"

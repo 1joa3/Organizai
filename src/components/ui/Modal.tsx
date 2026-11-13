@@ -1,5 +1,6 @@
 "use client";
 
+import { SHAKE_EVENT, shake } from "@/lib/shake";
 import { ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +30,15 @@ export default function Modal({
   maxWidth = "max-w-lg",
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Erro enquanto a janela está aberta (toast de erro, campo inválido): balança
+  useEffect(() => {
+    if (!isOpen) return;
+    const onShake = () => shake(panelRef.current);
+    window.addEventListener(SHAKE_EVENT, onShake);
+    return () => window.removeEventListener(SHAKE_EVENT, onShake);
+  }, [isOpen]);
   // false no servidor e na hidratação, true depois — o portal só existe no cliente
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const accentClass = ACCENT_CLASS[accent];
@@ -68,12 +78,18 @@ export default function Modal({
           transition={{ duration: 0.25 }}
           className="fixed inset-0 z-[60] flex items-center justify-center bg-backdrop backdrop-blur-md p-3 sm:p-4"
         >
+          {/* "Modal open/close" da transitions.dev: cresce de 0,96 a partir do
+              centro em 250ms e some em 150ms. Por dentro, um wrapper balança
+              quando algo dá errado ("Error state shake"). */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 16 }}
-            transition={{ type: "spring", damping: 28, stiffness: 380 }}
-            className={`w-full ${maxWidth} glass-card relative overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)]`}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }}
+            className={`w-full ${maxWidth} flex justify-center`}
+          >
+          <div
+            ref={panelRef}
+            className={`t-shake w-full glass-card relative overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)]`}
           >
             {/* Top accent line — signals the "kind" of window at a glance */}
             <div
@@ -104,6 +120,7 @@ export default function Modal({
 
             {/* Body — rola sozinho quando o formulário é mais alto que a tela */}
             <div className="px-5 sm:px-6 py-5 sm:py-6 overflow-y-auto overscroll-contain">{children}</div>
+          </div>
           </motion.div>
         </motion.div>
       )}

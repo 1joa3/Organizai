@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./transitions.css";
 
 /* ═══════════════════════════════════════════════════
    DESIGN SYSTEM: Cyber-Luxe Glassmorphism
@@ -15,7 +16,7 @@
   --border:      rgba(255, 255, 255, 0.08);
   --text:        #F8F9FA;
   --text-dim:    #A1A1AA;
-  --text-muted:  #52525B;
+  --text-muted:  #82828C;
 
   /* Cor de primeiro plano: texto forte e as sobreposições translúcidas
      (bg-fg/5, border-fg/10) que escurecem ou clareiam conforme o tema */
@@ -44,7 +45,7 @@
     --border:      rgba(0, 0, 0, 0.08);
     --text:        #0B0B0F;
     --text-dim:    #52525B;
-    --text-muted:  #8A8A93;
+    --text-muted:  #6B6B74;
 
     --fg:          #0B0B0F;
     --panel:       #FFFFFF;
@@ -71,7 +72,7 @@
     --border:      rgba(0, 0, 0, 0.08);
     --text:        #0B0B0F;
     --text-dim:    #52525B;
-    --text-muted:  #8A8A93;
+    --text-muted:  #6B6B74;
 
     --fg:          #0B0B0F;
     --panel:       #FFFFFF;

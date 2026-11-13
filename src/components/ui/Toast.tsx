@@ -1,5 +1,6 @@
 "use client";
 
+import { requestShake } from "@/lib/shake";
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Accent, ACCENT_VAR } from "@/lib/accents";
@@ -31,13 +32,8 @@ const toastConfig: Record<ToastType, { icon: ReactNode; accent: Accent }> = {
   success: {
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <motion.path
-          d="M20 6L9 17l-5-5"
-          stroke="currentColor"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
-        />
+        {/* 24 ≈ o comprimento do traço, para o desenho chegar até o fim */}
+        <path d="M20 6L9 17l-5-5" stroke="currentColor" style={{ strokeDasharray: 24, strokeDashoffset: 24 }} />
       </svg>
     ),
     accent: "emerald",
@@ -104,7 +100,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const toast = {
     success: (title: string, message?: string) => addToast("success", title, message),
-    error: (title: string, message?: string) => addToast("error", title, message),
+    error: (title: string, message?: string) => {
+      requestShake();
+      addToast("error", title, message);
+    },
     warning: (title: string, message?: string) => addToast("warning", title, message),
     info: (title: string, message?: string) => addToast("info", title, message),
   };
@@ -137,10 +136,13 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, x: 80, scale: 0.85 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 80, scale: 0.85, transition: { duration: 0.2 } }}
-      transition={{ type: "spring", damping: 24, stiffness: 350 }}
+      // "Toast open/close" da transitions.dev: chega com fade, desfoque e
+      // leve escala (350ms) e sai mais rápido (250ms). Os avisos ficam no
+      // topo, então descem em vez de subir.
+      initial={{ opacity: 0, y: -16, scale: 0.97, filter: "blur(2px)" }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, y: -16, scale: 0.97, filter: "blur(2px)", transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className="pointer-events-auto relative overflow-hidden"
       style={{
         borderRadius: "14px",
@@ -179,7 +181,14 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
             color: accentVar,
           }}
         >
-          {config.icon}
+          {/* Sucesso: o check entra girando e se desenha ("Success check") */}
+          {toast.type === "success" ? (
+            <span className="t-success-check" data-state="in">
+              {config.icon}
+            </span>
+          ) : (
+            config.icon
+          )}
         </div>
 
         {/* Content */}

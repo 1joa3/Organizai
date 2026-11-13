@@ -1,5 +1,6 @@
 "use client";
 
+import SegmentedTabs from "@/components/ui/SegmentedTabs";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
@@ -20,25 +21,17 @@ export default function LoginForm({ next, linkError }: { next?: string; linkErro
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-1 p-1 bg-fg/5 rounded-lg border border-fg/10" role="tablist">
-        {([
-          ["signin", "Entrar"],
-          ["signup", "Criar conta"],
-        ] as const).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={mode === value}
-            onClick={() => setMode(value)}
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-              mode === value ? "bg-fg/10 text-fg" : "text-text-muted hover:text-fg"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs
+        full
+        ariaLabel="Entrar ou criar conta"
+        value={mode}
+        onChange={setMode}
+        tabClassName="text-sm font-medium h-9!"
+        options={[
+          { value: "signin", label: "Entrar" },
+          { value: "signup", label: "Criar conta" },
+        ]}
+      />
 
       <FormMessage error={state.error ?? linkErrorMessage} message={state.message} />
 
