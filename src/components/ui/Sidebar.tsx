@@ -40,6 +40,15 @@ const LogoutIcon = (
   </svg>
 );
 
+const PlusIcon = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+/** Abre a janela de nova transação (Transações lê o `?nova=1` e abre sozinha) */
+export const NEW_TRANSACTION_HREF = "/transacoes?nova=1";
+
 const navItems = [
   {
     href: "/",
@@ -127,40 +136,50 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
         isExpanded ? "w-64" : "w-20"
       }`}
     >
-      {/* Botão abrir/fechar */}
-      <button
-        onClick={onToggle}
-        className="absolute -right-3.5 top-10 w-7 h-7 bg-panel border border-fg/10 rounded-full flex items-center justify-center text-text-dim hover:text-fg hover:border-fg/30 hover:scale-110 transition-all duration-200 z-50 cursor-pointer"
-        aria-label={isExpanded ? "Recolher menu" : "Expandir menu"}
-        aria-expanded={isExpanded}
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`transition-transform duration-300 ${isExpanded ? "rotate-0" : "rotate-180"}`}
-        >
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </button>
-
       <div className="h-full flex flex-col overflow-hidden">
-        {/* Logo */}
-        <div className="h-24 px-5 flex items-center gap-3 shrink-0">
-          <LogoMark size={40} />
-          <span className={`font-display text-2xl tracking-tight text-fg ${labelClass(isExpanded)}`}>
-            Organiz
-            <span className="bg-gradient-to-br from-blue to-emerald bg-clip-text text-transparent">AI</span>
-          </span>
+        {/* Logo e o botão de recolher, na mesma linha. Fechado, a logo some
+            e fica só o botão, no lugar dela */}
+        <div className="h-20 pl-5 pr-3 flex items-center gap-3 shrink-0">
+          <div className={`flex items-center gap-3 min-w-0 flex-1 ${isExpanded ? "" : "hidden"}`}>
+            <LogoMark size={36} />
+            <span className={`font-display text-xl tracking-tight text-fg ${labelClass(isExpanded)}`}>
+              Organiz
+              <span className="bg-gradient-to-br from-blue to-emerald bg-clip-text text-transparent">AI</span>
+            </span>
+          </div>
+          <button
+            onClick={onToggle}
+            className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-text-muted hover:text-fg hover:bg-fg/5 transition-colors cursor-pointer ${
+              isExpanded ? "" : "-ml-0.5"
+            }`}
+            aria-label={isExpanded ? "Recolher menu" : "Expandir menu"}
+            aria-expanded={isExpanded}
+            title={isExpanded ? "Recolher menu" : "Expandir menu"}
+          >
+            {/* Ícone de painel lateral: a faixa da esquerda cheia quando aberto */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <path d="M9 4v16" />
+              {isExpanded && <path d="M5.5 8h1M5.5 11h1" />}
+            </svg>
+          </button>
+        </div>
+
+        {/* Ação principal, sempre à mão */}
+        <div className="px-3 pt-2 pb-4">
+          <Link
+            prefetch
+            href={NEW_TRANSACTION_HREF}
+            title={!isExpanded ? "Nova transação" : undefined}
+            className="flex items-center gap-3 h-11 pl-[16px] rounded-xl bg-blue text-bg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-[filter,transform] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue"
+          >
+            <span className="shrink-0">{PlusIcon}</span>
+            <span className={labelClass(isExpanded)}>Nova transação</span>
+          </Link>
         </div>
 
         {/* Navegação */}
-        <nav className="flex-1 px-3 py-4 space-y-2">
+        <nav className="flex-1 px-3 space-y-1" aria-label="Principal">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -168,27 +187,27 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
                 prefetch
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 title={!isExpanded ? item.label : undefined}
-                className={`relative flex items-center gap-3 h-12 pl-[18px] rounded-xl text-sm font-medium transition-colors duration-200 group focus-visible:outline-2 focus-visible:outline-blue ${
-                  isActive ? "text-fg" : "text-text-muted hover:text-fg"
+                className={`relative flex items-center gap-3 h-11 pl-[18px] rounded-xl text-sm font-medium transition-colors duration-200 group focus-visible:outline-2 focus-visible:outline-blue ${
+                  isActive ? "text-fg" : "text-text-muted hover:text-fg hover:bg-fg/5"
                 }`}
               >
+                {/* Fundo e barra da página atual, que deslizam até o item escolhido */}
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active"
-                    className="absolute inset-0 bg-fg/[0.08] border border-fg/10 rounded-xl pointer-events-none"
+                    className="absolute inset-0 bg-fg/[0.07] rounded-xl pointer-events-none"
                     initial={false}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-
-                {!isActive && (
-                  <div className="absolute inset-0 bg-fg/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl pointer-events-none" />
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                  >
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-blue" />
+                  </motion.div>
                 )}
 
                 <span
                   className={`relative z-10 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110 group-active:scale-95 ${
-                    isActive ? "text-blue drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]" : ""
+                    isActive ? "text-blue" : ""
                   }`}
                 >
                   {item.icon}
@@ -199,23 +218,8 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
           })}
         </nav>
 
-        {/* Tema */}
-        <div className="px-3">
-          <button
-            onClick={toggleTheme}
-            title={!isExpanded ? themeToggleLabel(theme) : undefined}
-            aria-label={themeToggleLabel(theme)}
-            className="w-full flex items-center gap-3 h-12 pl-[18px] rounded-xl text-sm font-medium text-text-muted hover:text-fg hover:bg-fg/5 transition-colors duration-200 cursor-pointer"
-          >
-            <span className="shrink-0">
-              <ThemeIcon theme={theme} />
-            </span>
-            <span className={labelClass(isExpanded)}>{themeToggleLabel(theme)}</span>
-          </button>
-        </div>
-
-        {/* Usuário: abre o menu com "Meu perfil" e "Sair" (funciona aberto ou fechado) */}
-        <div className="px-3 py-6">
+        {/* Usuário: abre o menu com perfil, tema e sair (funciona aberto ou fechado) */}
+        <div className="px-3 py-4 border-t border-fg/5">
           <button
             ref={userButtonRef}
             type="button"
@@ -223,8 +227,8 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
             aria-haspopup="menu"
             aria-expanded={userMenuOpen}
             title={!isExpanded ? (user.name ?? user.email ?? undefined) : undefined}
-            className={`w-full flex items-center gap-3 p-2 rounded-xl border text-left transition-colors duration-300 cursor-pointer hover:bg-fg/5 ${
-              isExpanded || userMenuOpen ? "bg-bg-surface border-border" : "bg-transparent border-transparent"
+            className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-colors duration-200 cursor-pointer hover:bg-fg/5 ${
+              userMenuOpen ? "bg-fg/5" : ""
             }`}
           >
             <span className="shrink-0 w-10 h-10 rounded-full bg-fg/10 flex items-center justify-center border border-fg/5">
@@ -277,6 +281,16 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
               {ProfileIcon}
               Meu perfil
             </Link>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={toggleTheme}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-text-dim hover:text-fg hover:bg-fg/5 transition-colors cursor-pointer"
+            >
+              <ThemeIcon theme={theme} />
+              {themeToggleLabel(theme)}
+            </button>
+            <div className="my-1 h-px bg-fg/5" />
             <form action={signOut}>
               <button
                 type="submit"
@@ -297,14 +311,19 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
 export function MobileBottomNav() {
   const pathname = usePathname();
   const items = [...navItems, { href: "/perfil", label: "Perfil", icon: ProfileIcon }];
+  // Duas abas de cada lado e o "+" no meio, ao alcance do polegar
+  const middle = Math.ceil(items.length / 2);
 
   // O tema fica em Perfil → Aparência: aqui só o que é navegação
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-panel/90 backdrop-blur-3xl border-t border-fg/5 shadow-[0_-4px_24px_var(--shadow)] pb-[env(safe-area-inset-bottom)]">
+    <nav
+      aria-label="Principal"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-panel/90 backdrop-blur-3xl border-t border-fg/5 shadow-[0_-4px_24px_var(--shadow)] pb-[env(safe-area-inset-bottom)]"
+    >
       <div className="flex items-stretch justify-around px-2 py-1.5">
-        {items.map((item) => {
+        {items.map((item, i) => {
           const isActive = pathname === item.href;
-          return (
+          const tab = (
             <Link
               prefetch
               key={item.href}
@@ -319,7 +338,7 @@ export function MobileBottomNav() {
                 {isActive && (
                   <motion.span
                     layoutId="mobile-nav-active"
-                    className="absolute inset-0 rounded-full bg-blue/10 drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"
+                    className="absolute inset-0 rounded-full bg-blue/10"
                     transition={{ type: "spring", stiffness: 420, damping: 34 }}
                   />
                 )}
@@ -330,6 +349,25 @@ export function MobileBottomNav() {
               {item.label}
             </Link>
           );
+          if (i !== middle) return tab;
+          return [
+            <Link
+              prefetch
+              key="nova"
+              href={NEW_TRANSACTION_HREF}
+              aria-label="Nova transação"
+              className="relative flex-1 flex items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-blue"
+            >
+              <motion.span
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue text-bg shadow-[0_6px_20px_-6px_color-mix(in_srgb,var(--blue)_70%,transparent)]"
+              >
+                {PlusIcon}
+              </motion.span>
+            </Link>,
+            tab,
+          ];
         })}
       </div>
     </nav>

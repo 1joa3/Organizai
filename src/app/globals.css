@@ -200,6 +200,17 @@ body::after {
   color: var(--bg);
 }
 
+/* Celular: campos com letra de 16px. Abaixo disso o Safari do iPhone dá
+   zoom na página ao tocar no campo. Fora de @layer, vence o text-sm dos
+   componentes. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* ─── Glassmorphism Cards ─── */
 .glass-card {
   /* Contexto de empilhamento próprio: o brilho do Spotlight fica entre o

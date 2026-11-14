@@ -3,7 +3,8 @@
 import { SHAKE_EVENT, shake } from "@/lib/shake";
 import { ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { useIsPhone } from "@/lib/useIsPhone";
 import { Accent, ACCENT_CLASS, ACCENT_VAR } from "@/lib/accents";
 
 interface ModalProps {
@@ -31,6 +32,8 @@ export default function Modal({
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const phone = useIsPhone();
+  const dragControls = useDragControls();
 
   // Erro enquanto a janela está aberta (toast de erro, campo inválido): balança
   useEffect(() => {
@@ -76,20 +79,37 @@ export default function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-backdrop backdrop-blur-md p-3 sm:p-4"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-backdrop backdrop-blur-md sm:p-4"
         >
-          {/* "Modal open/close" da transitions.dev: cresce de 0,96 a partir do
-              centro em 250ms e some em 150ms. Por dentro, um wrapper balança
-              quando algo dá errado ("Error state shake"). */}
+          {/* Computador: "Modal open/close" da transitions.dev, cresce de 0,96
+              a partir do centro em 250ms e some em 150ms. Celular: folha que
+              sobe de baixo e desce arrastando pela alça. Por dentro, um
+              wrapper balança quando algo dá errado ("Error state shake"). */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
-            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }}
+            initial={phone ? { y: "100%" } : { opacity: 0, scale: 0.96 }}
+            animate={
+              phone
+                ? { y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }
+                : { opacity: 1, scale: 1, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }
+            }
+            exit={
+              phone
+                ? { y: "100%", transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }
+                : { opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }
+            }
+            drag={phone ? "y" : false}
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.7 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 110 || info.velocity.y > 600) onClose();
+            }}
             className={`w-full ${maxWidth} flex justify-center`}
           >
           <div
             ref={panelRef}
-            className={`t-shake w-full glass-card relative overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)]`}
+            className={`t-shake w-full glass-card relative overflow-hidden flex flex-col max-h-[92dvh] rounded-b-none! rounded-t-[20px]! pb-[env(safe-area-inset-bottom)] sm:pb-0 sm:rounded-xl! sm:max-h-[calc(100dvh-2rem)]`}
           >
             {/* Top accent line — signals the "kind" of window at a glance */}
             <div
@@ -97,8 +117,22 @@ export default function Modal({
               style={{ boxShadow: `0 0 16px -1px ${ACCENT_VAR[accent]}` }}
             />
 
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 px-5 sm:px-6 pt-5 pb-4 border-b border-fg/5 shrink-0">
+            {/* Alça (celular): arrastar para baixo fecha */}
+            <div
+              className="sm:hidden flex justify-center pt-2.5 pb-1 touch-none cursor-grab active:cursor-grabbing"
+              onPointerDown={(e) => dragControls.start(e)}
+              aria-hidden="true"
+            >
+              <span className="h-1 w-10 rounded-full bg-fg/20" />
+            </div>
+
+            {/* Header (no celular também serve para arrastar) */}
+            <div
+              className="flex items-start justify-between gap-4 px-5 sm:px-6 pt-2 sm:pt-5 pb-4 border-b border-fg/5 shrink-0 touch-none sm:touch-auto"
+              onPointerDown={(e) => {
+                if (phone && !(e.target as HTMLElement).closest("button")) dragControls.start(e);
+              }}
+            >
               <div className="min-w-0">
                 {eyebrow && (
                   <p className={`font-mono-value text-[10px] uppercase tracking-[0.15em] mb-1 ${accentClass.text}`}>

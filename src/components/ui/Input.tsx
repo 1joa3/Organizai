@@ -27,7 +27,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative t-shake">
           {prefix && (
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-text-muted pointer-events-none">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base sm:text-sm text-text-muted pointer-events-none">
               {prefix}
             </span>
           )}

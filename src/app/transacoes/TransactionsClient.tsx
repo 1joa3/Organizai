@@ -5,7 +5,8 @@ import Checkbox from "@/components/ui/Checkbox";
 import GlideSelect from "@/components/reactbits/GlideSelect";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import PageTitle from "@/components/ui/PageTitle";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -136,6 +137,32 @@ export default function TransactionsClient({
     setSelectedType("despesa");
     setIsModalOpen(true);
   }
+
+  // "Nova transação" do menu (ou o "+" do celular) chega como ?nova=1: abre
+  // a janela e tira o parâmetro da URL, para não reabrir ao recarregar
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const wantsNew = searchParams.get("nova") === "1";
+  const [handledNew, setHandledNew] = useState(false);
+  // Ajuste durante a renderização (padrão do React para reagir a uma mudança
+  // de entrada), em vez de setState dentro de um efeito
+  if (wantsNew && !handledNew) {
+    setHandledNew(true);
+    setEditingTransaction(null);
+    setSelectedType("despesa");
+    setIsModalOpen(true);
+  } else if (!wantsNew && handledNew) {
+    setHandledNew(false);
+  }
+  useEffect(() => {
+    if (!wantsNew) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("nova");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsNew]);
 
   function openEditModal(t: SerializedTransaction) {
     setEditingTransaction(t);
@@ -614,8 +641,7 @@ export default function TransactionsClient({
       )}
 
       {/* Celular: seções por dia */}
-      {/* pb: espaço para o botão flutuante não cobrir o último item */}
-      <div className="md:hidden space-y-5 pb-16">
+      <div className="md:hidden space-y-5">
         {days.length === 0 ? (
           <div className="glass-panel px-5 py-12 text-center text-text-muted text-sm">
             {isFiltering ? "Nenhuma transação encontrada com esses filtros" : "Nenhuma transação neste período"}
@@ -654,18 +680,6 @@ export default function TransactionsClient({
           emptyMessage={isFiltering ? "Nenhuma transação encontrada com esses filtros" : "Nenhuma transação neste período"}
         />
       </motion.div>
-
-      {/* Celular: botão flutuante de nova transação, acima da barra inferior */}
-      <button
-        type="button"
-        onClick={openCreateModal}
-        aria-label="Nova transação"
-        className="md:hidden fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 w-14 h-14 rounded-full bg-fg text-bg flex items-center justify-center shadow-[0_8px_30px_-6px_var(--shadow),0_0_20px_color-mix(in_srgb,var(--fg)_20%,transparent)] active:scale-95 transition-transform cursor-pointer"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
 
       {/* Modal Nova Transação */}
       <Modal

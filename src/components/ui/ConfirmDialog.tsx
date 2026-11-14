@@ -4,6 +4,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "./Button";
+import { useIsPhone } from "@/lib/useIsPhone";
 import { ACCENT_CLASS, ACCENT_VAR } from "@/lib/accents";
 
 interface ConfirmDialogProps {
@@ -74,6 +75,7 @@ export default function ConfirmDialog({
   onExtra,
 }: ConfirmDialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const phone = useIsPhone();
   // false no servidor e na hidratação, true depois — o portal só existe no cliente
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const config = variantConfig[variant];
@@ -111,14 +113,22 @@ export default function ConfirmDialog({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-backdrop backdrop-blur-md p-4"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-backdrop backdrop-blur-md sm:p-4"
         >
+          {/* Celular: sobe de baixo, como as outras janelas. Computador: cresce do centro */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: 16 }}
-            transition={{ type: "spring", damping: 30, stiffness: 420 }}
-            className="w-full max-w-[380px] glass-card relative overflow-hidden"
+            initial={phone ? { y: "100%" } : { opacity: 0, scale: 0.96 }}
+            animate={
+              phone
+                ? { y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }
+                : { opacity: 1, scale: 1, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }
+            }
+            exit={
+              phone
+                ? { y: "100%", transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }
+                : { opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }
+            }
+            className="w-full sm:max-w-[380px] glass-card relative overflow-hidden rounded-b-none! rounded-t-[20px]! pb-[env(safe-area-inset-bottom)] sm:pb-0 sm:rounded-xl!"
           >
             {/* Top accent line, same language as Modal */}
             <div
