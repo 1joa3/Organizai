@@ -11,6 +11,7 @@ import { saveBudgets } from "@/lib/budgetActions";
 import type { BudgetCategory, BudgetItem, BudgetStatus, BudgetSummary } from "@/lib/budget";
 import { formatCurrency } from "@/lib/formatters";
 import { moneyDisplay, moneyFromTyping, moneyValue } from "@/lib/moneyInput";
+import { useIsPhone } from "@/lib/useIsPhone";
 
 interface BudgetCardProps {
   summary: BudgetSummary;
@@ -118,6 +119,14 @@ export default function BudgetCard({ summary, categories, spentByCategory, perio
     setOpen(false);
   }
 
+  // No celular, só o que pede atenção (estourou, acima do ritmo, perto do
+  // limite); o resto fica atrás de "Ver todas", para a tela não crescer
+  const phone = useIsPhone();
+  const [expanded, setExpanded] = useState(false);
+  const attention = summary.items.filter((i) => i.status !== "ok");
+  const shownItems = phone && !expanded ? attention : summary.items;
+  const hiddenCount = summary.items.length - shownItems.length;
+
   const monthlyTotal = categories.reduce((s, c) => s + parseAmount(values[c.id] ?? ""), 0);
   const overall = summary.limit > 0 ? summary.spent / summary.limit : 0;
   const overallStatus: BudgetStatus =
@@ -168,11 +177,31 @@ export default function BudgetCard({ summary, categories, spentByCategory, perio
               </p>
             )}
           </div>
-          <ul className="grid gap-x-8 gap-y-5 @xl:grid-cols-2 @4xl:grid-cols-3">
-            {summary.items.map((item) => (
-              <BudgetRow key={item.categoryId} item={item} summary={summary} />
-            ))}
-          </ul>
+          {shownItems.length > 0 ? (
+            <ul className="grid gap-x-8 gap-y-5 @xl:grid-cols-2 @4xl:grid-cols-3">
+              {shownItems.map((item) => (
+                <BudgetRow key={item.categoryId} item={item} summary={summary} />
+              ))}
+            </ul>
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-text-dim">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald shrink-0" aria-hidden>
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+              {summary.items.length === 1 ? "A categoria está" : `As ${summary.items.length} categorias estão`}{" "}
+              {summary.ongoing ? "no ritmo" : "dentro do limite"}.
+            </p>
+          )}
+          {hiddenCount > 0 || expanded ? (
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              aria-expanded={expanded}
+              className="mt-4 self-start text-xs font-medium text-blue hover:underline underline-offset-4 cursor-pointer"
+            >
+              {expanded ? "Ver só as que pedem atenção" : `Ver todas as ${summary.items.length} categorias`}
+            </button>
+          ) : null}
           {summary.unbudgeted > 0 && (
             <p className="text-xs text-text-muted mt-6">
               Mais {formatCurrency(summary.unbudgeted)} em categorias sem limite.

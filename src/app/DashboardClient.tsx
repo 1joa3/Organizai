@@ -18,7 +18,9 @@ import LinePatrimony from "@/components/charts/LinePatrimony";
 import DebtPayoffChart from "@/components/charts/DebtPayoffChart";
 import GoalProgressBar from "@/components/charts/GoalProgressBar";
 import PeriodSelector from "@/components/ui/PeriodSelector";
+import Link from "next/link";
 import ResizableBlock from "@/components/dashboard/ResizableBlock";
+import InstallmentsCard, { type InstallmentItem } from "@/components/dashboard/InstallmentsCard";
 import {
   type DashboardBlockId,
   type DashboardLayout,
@@ -35,6 +37,8 @@ import {
   setBlockHidden,
   setBlockSpan,
   visibleBlocks,
+  packRows,
+  type GridMode,
 } from "@/lib/dashboardLayout";
 import type { CategoryRow } from "@/lib/categoryBreakdown";
 import type { Insight, Pace } from "@/lib/dashboardStory";
@@ -67,7 +71,7 @@ interface Props {
     };
     expenses: CategoryExpense[];
   };
-  installmentsSummary: { name: string; color: string; total: number; currentInstallment: number; totalInstallments: number; currentAmount: number; targetAmount: number }[];
+  installmentsSummary: InstallmentItem[];
   investmentTotals: { invested: number; current: number; returnAmount: number; returnPercent: number };
   patrimonyEvolution: { label: string; saldo: number; investido: number }[];
   recentTransactions: {
@@ -128,12 +132,6 @@ export default function DashboardClient({
   layout: initialLayout,
 }: Props) {
   const [layout, setLayout] = useState(() => readLayoutCookie() ?? initialLayout);
-  // Verdadeiro só no navegador (no servidor e na hidratação, falso)
-  const masonry = useSyncExternalStore(
-    noopSubscribe,
-    () => true,
-    () => false
-  );
   // No servidor não dá para saber a hora de quem vê: começa com "Olá"
   const greeting = useSyncExternalStore(noopSubscribe, greetingNow, () => "Olá");
   const [editing, setEditing] = useState(false);
@@ -158,15 +156,19 @@ export default function DashboardClient({
   // As larguras só valem com o grid largo (≥ 56rem, o @4xl do container
   // "dash"); mais estreito, o modo de edição esconde a alça e os atalhos
   const gridRef = useRef<HTMLDivElement>(null);
-  const [wide, setWide] = useState(true);
+  const [mode, setMode] = useState<GridMode>("wide");
   useEffect(() => {
     const grid = gridRef.current;
     if (!grid) return;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const observer = new ResizeObserver(([entry]) => setWide(entry.contentRect.width >= 56 * rem));
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      setMode(width >= 56 * rem ? "wide" : width >= 42 * rem ? "medium" : "narrow");
+    });
     observer.observe(grid);
     return () => observer.disconnect();
   }, []);
+  const wide = mode === "wide";
 
   function updateLayout(next: DashboardLayout) {
     setLayout(next);
@@ -228,7 +230,6 @@ export default function DashboardClient({
       height: layout.heights[id],
       editing,
       wide,
-      masonry,
       // Durante o arraste só pré-visualiza; salva ao soltar
       onResize: (size: { span: number; height: number | null }) =>
         setLayout((prev) => setBlockHeight(setBlockSpan(prev, id, size.span), id, size.height)),
@@ -302,26 +303,33 @@ export default function DashboardClient({
         className="relative h-full glass-card p-6 flex flex-col"
       >
         <CardSpotlight />
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-          <h2 className="font-display text-lg text-fg">Quitação de Dívidas</h2>
-          <div className="flex flex-wrap gap-6 sm:gap-8">
-            <div>
-              <p className="text-[10px] font-medium text-text-dim uppercase tracking-wider mb-1">Total em dívidas</p>
-              <p className="font-mono-value text-lg text-amber drop-shadow-[0_0_8px_rgba(255,184,0,0.3)]">
-                <AnimatedNumber value={debtsSummary.totalDebt} />
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-medium text-text-dim uppercase tracking-wider mb-1">Previsão de quitação</p>
-              <p className="font-mono-value text-lg text-fg">
-                {debtsSummary.payoffDate
-                  ? `${formatMonthYear(debtsSummary.payoffDate)} (${debtsSummary.monthsToPayoff} ${debtsSummary.monthsToPayoff === 1 ? "mês" : "meses"})`
-                  : "—"}
-              </p>
-            </div>
+        <h2 className="font-display text-lg text-fg">Quitação de dívidas</h2>
+        {/* Os dois números numa linha só, logo abaixo do título */}
+        <dl className="mt-4 mb-5 grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-fg/[0.04] px-3.5 py-3 min-w-0">
+            <dt className="text-xs text-text-dim">Total em dívidas</dt>
+            <dd className="font-mono-value text-base text-amber mt-0.5 truncate">
+              <AnimatedNumber value={debtsSummary.totalDebt} />
+            </dd>
           </div>
-        </div>
-        <div className="flex-1">
+          <div className="rounded-xl bg-fg/[0.04] px-3.5 py-3 min-w-0">
+            <dt className="text-xs text-text-dim">Quitação prevista</dt>
+            <dd className="text-base text-fg mt-0.5 truncate">
+              {debtsSummary.payoffDate ? (
+                <>
+                  {formatMonthYear(debtsSummary.payoffDate)}
+                  <span className="text-text-muted text-sm">
+                    {" "}
+                    · {debtsSummary.monthsToPayoff} {debtsSummary.monthsToPayoff === 1 ? "mês" : "meses"}
+                  </span>
+                </>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+        </dl>
+        <div className="flex-1 [--chart-min:9rem]">
           <DebtPayoffChart timeline={debtsSummary.timeline} />
         </div>
       </motion.div>
@@ -358,49 +366,7 @@ export default function DashboardClient({
       </motion.div>
     ),
     // Despesas Parceladas
-    parceladas: (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="relative h-full glass-card p-6"
-      >
-        <CardSpotlight />
-        <h2 className="font-display text-lg text-fg mb-6 flex items-center justify-between">
-          Despesas Parceladas
-          <span className="text-xs font-sans text-text-muted uppercase tracking-widest">{installmentsSummary.length} ativas</span>
-        </h2>
-        {installmentsSummary.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-text-muted border border-dashed border-fg/10 rounded-lg">
-            Nenhum parcelamento
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {installmentsSummary.map((inst) => (
-              <div key={inst.name}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-fg">{inst.name}</span>
-                  <span className="font-mono-value text-xs text-text-dim">
-                    {inst.currentInstallment}/{inst.totalInstallments} parcelas
-                  </span>
-                </div>
-                <GoalProgressBar
-                  current={inst.currentAmount}
-                  target={inst.targetAmount}
-                  color={inst.color}
-                  height={6}
-                  showLabel={false}
-                />
-                <p className="text-[10px] text-text-muted mt-1.5 font-mono-value tracking-wider flex justify-between">
-                  <span>{calcPercent(inst.currentAmount, inst.targetAmount)}% PAGO</span>
-                  <span>{formatCurrency(inst.total)} nesta fatura</span>
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    ),
+    parceladas: <InstallmentsCard items={installmentsSummary} />,
     // Metas
     metas: (
       <motion.div
@@ -450,12 +416,22 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="relative h-full glass-card p-6"
+        className="relative h-full glass-card p-6 flex flex-col"
       >
         <CardSpotlight />
-        <h2 className="font-display text-lg text-fg mb-4">
-          Recentes
-        </h2>
+        <div className="flex items-baseline justify-between gap-3 mb-4">
+          <h2 className="font-display text-lg text-fg">Últimas transações</h2>
+          <Link
+            prefetch
+            href="/transacoes"
+            className="inline-flex items-center gap-1 text-xs font-medium text-blue hover:underline underline-offset-4 whitespace-nowrap"
+          >
+            Ver todas
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </Link>
+        </div>
         <RecentTransactions transactions={recentTransactions} />
       </motion.div>
     ),
@@ -555,18 +531,18 @@ export default function DashboardClient({
 
       {/* Grid principal: blocos visíveis na ordem escolhida */}
       <div ref={gridRef} className="@container/dash">
-        {/* Blocos alinhados pelo topo, cada um com a própria altura. No
-            navegador, o grid passa a linhas finas e cada bloco ocupa as que
-            precisa: um bloco baixo não deixa buraco nem estica o vizinho. */}
-        <div
-          className={`grid grid-cols-24 items-start ${
-            masonry ? "gap-x-4 sm:gap-x-6 auto-rows-[4px]" : "gap-4 sm:gap-6"
-          }`}
-        >
-          {visible.map((id) => (
-            <ResizableBlock key={id} {...blockProps(id)}>
-              {blockContent[id]}
-            </ResizableBlock>
+        {/* Fileiras: os blocos de cada uma esticam até a altura do mais alto,
+            então não sobra buraco embaixo de um bloco mais baixo. Cada
+            fileira é um grid de 24 colunas com as larguras escolhidas. */}
+        <div className="flex flex-col gap-4 sm:gap-6">
+          {packRows(visible, layout.spans, mode).map((row) => (
+            <div key={row.join()} className="grid grid-cols-24 gap-4 sm:gap-6">
+              {row.map((id) => (
+                <ResizableBlock key={id} {...blockProps(id)}>
+                  {blockContent[id]}
+                </ResizableBlock>
+              ))}
+            </div>
           ))}
         </div>
         {visible.length === 0 && (

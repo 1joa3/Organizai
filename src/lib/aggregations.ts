@@ -169,7 +169,7 @@ export async function getInstallmentsSummary(userId: string, { start: startDate,
 
   const installments = transactions.filter((t) => getInstallmentInfo(t));
 
-  const grouped = new Map<string, { name: string; total: number; color: string; currentInstallment: number; totalInstallments: number; currentAmount: number; targetAmount: number }>();
+  const grouped = new Map<string, { name: string; category: string; total: number; color: string; currentInstallment: number; totalInstallments: number; currentAmount: number; targetAmount: number }>();
 
   installments.forEach(t => {
     const info = getInstallmentInfo(t)!;
@@ -180,7 +180,8 @@ export async function getInstallmentsSummary(userId: string, { start: startDate,
     const groupKey = t.installmentGroupId ?? baseName;
     const existing = grouped.get(groupKey) || { 
       name: baseName,
-      total: 0, 
+      category: t.category?.name ?? "",
+      total: 0,
       color: t.category?.color || "#8884d8",
       currentInstallment: 0,
       totalInstallments: 0,
@@ -191,6 +192,7 @@ export async function getInstallmentsSummary(userId: string, { start: startDate,
     // As assumps that there's typically 1 transaction per installment in the month
     grouped.set(groupKey, {
       name: existing.name,
+      category: existing.category,
       total: existing.total + Number(t.amount),
       color: existing.color,
       currentInstallment: currentInst,
@@ -202,6 +204,7 @@ export async function getInstallmentsSummary(userId: string, { start: startDate,
 
   return Array.from(grouped.values()).map((data) => ({
     name: data.name,
+    category: data.category,
     color: data.color,
     total: data.total,
     currentInstallment: data.currentInstallment,

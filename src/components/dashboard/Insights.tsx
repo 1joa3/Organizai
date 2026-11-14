@@ -2,7 +2,9 @@
 
 import CardSpotlight from "@/components/ui/CardSpotlight";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import type { Insight, InsightTone } from "@/lib/dashboardStory";
+import { useIsPhone } from "@/lib/useIsPhone";
 
 const TONE: Record<InsightTone, { box: string; label: string; icon: React.ReactNode }> = {
   good: {
@@ -34,8 +36,16 @@ const TONE: Record<InsightTone, { box: string; label: string; icon: React.ReactN
   },
 };
 
+/** No celular, quantas aparecem antes do "Ver mais" */
+const PHONE_LIMIT = 3;
+
 /** Observações automáticas sobre o período (veja buildInsights). */
 export default function Insights({ insights }: { insights: Insight[] }) {
+  const phone = useIsPhone();
+  const [expanded, setExpanded] = useState(false);
+  const collapsed = phone && !expanded && insights.length > PHONE_LIMIT;
+  const shown = collapsed ? insights.slice(0, PHONE_LIMIT) : insights;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -51,7 +61,7 @@ export default function Insights({ insights }: { insights: Insight[] }) {
         </div>
       ) : (
         <ul className="space-y-4">
-          {insights.map((insight, i) => {
+          {shown.map((insight, i) => {
             const tone = TONE[insight.tone];
             return (
               <motion.li
@@ -77,6 +87,16 @@ export default function Insights({ insights }: { insights: Insight[] }) {
             );
           })}
         </ul>
+      )}
+      {phone && insights.length > PHONE_LIMIT && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          className="mt-4 self-start text-xs font-medium text-blue hover:underline underline-offset-4 cursor-pointer"
+        >
+          {expanded ? "Ver menos" : `Ver mais ${insights.length - PHONE_LIMIT}`}
+        </button>
       )}
     </motion.div>
   );

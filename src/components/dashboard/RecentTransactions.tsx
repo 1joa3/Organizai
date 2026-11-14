@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { formatCurrency, formatDateShort } from "@/lib/formatters";
 
@@ -18,67 +17,51 @@ interface RecentTransactionsProps {
   transactions: Transaction[];
 }
 
-export default function RecentTransactions({
-  transactions,
-}: RecentTransactionsProps) {
+/**
+ * Últimas transações em lista simples, separadas por uma linha fina:
+ * despesa na cor do texto, receita em verde com "+". O vermelho fica para
+ * o que é alerta de verdade (estouro, saldo negativo).
+ */
+export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
   if (transactions.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-text-muted text-sm border border-dashed border-fg/10 rounded-lg">
-        Nenhuma transação recente
+      <div className="flex-1 flex items-center justify-center py-12 text-text-muted text-sm">
+        Nenhuma transação neste período
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      {transactions.map((t, i) => (
-        <motion.div
-          key={t.id}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 + i * 0.08, ease: "easeOut" }}
-          className="group flex items-center justify-between p-3 sm:p-4 bg-fg/[0.02] hover:bg-fg/[0.06] border border-transparent hover:border-fg/10 rounded-xl transition-all duration-300"
-        >
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner shrink-0"
-              style={{
-                backgroundColor: `${t.category.color}15`,
-                border: `1px solid ${t.category.color}40`,
-                color: t.category.color,
-                filter: `drop-shadow(0 0 4px ${t.category.color}80)`,
-              }}
+    <ul className="divide-y divide-fg/[0.06]">
+      {transactions.map((t) => {
+        const income = t.type === "receita";
+        return (
+          <li key={t.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <span
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${t.category.color}1f`, color: t.category.color }}
+              aria-hidden
             >
-              <CategoryIcon name={t.category.name} size={18} />
-            </div>
-            <div className="min-w-0">
+              <CategoryIcon name={t.category.name} size={16} />
+            </span>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-fg truncate">{t.description}</p>
-              <p className="text-xs text-text-dim mt-0.5 flex items-center gap-2 whitespace-nowrap">
-                <span className="flex items-center gap-1 min-w-0">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: t.category.color, boxShadow: `0 0 5px ${t.category.color}` }} />
-                  {t.category.name}
-                </span>
+              <p className="text-xs text-text-muted mt-0.5 truncate">
+                {t.category.name}
                 {/* No celular a conta sai para sobrar espaço para a descrição */}
-                <span className="text-fg/20 hidden sm:inline">•</span>
-                <span className="hidden sm:inline truncate">{t.account.name}</span>
+                <span className="hidden sm:inline"> · {t.account.name}</span>
               </p>
             </div>
-          </div>
-
-          <div className="text-right shrink-0 ml-3 sm:ml-4">
-            <p
-              className={`font-mono-value text-sm sm:text-base font-medium whitespace-nowrap ${
-                t.type === "receita" ? "text-emerald drop-shadow-[0_0_8px_rgba(204,255,0,0.3)]" : "text-coral drop-shadow-[0_0_8px_rgba(255,0,85,0.3)]"
-              }`}
-            >
-              {t.type === "receita" ? "+" : "−"}{formatCurrency(t.amount)}
-            </p>
-            <p className="text-xs text-text-muted font-mono-value mt-0.5">
-              {formatDateShort(t.date)}
-            </p>
-          </div>
-        </motion.div>
-      ))}
-    </div>
+            <div className="text-right shrink-0">
+              <p className={`font-mono-value text-sm whitespace-nowrap ${income ? "text-emerald" : "text-fg"}`}>
+                {income ? "+" : "−"}
+                {formatCurrency(t.amount)}
+              </p>
+              <p className="text-xs text-text-muted mt-0.5">{formatDateShort(t.date)}</p>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

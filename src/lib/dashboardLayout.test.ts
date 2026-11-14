@@ -14,7 +14,35 @@ import {
   clampHeight,
   spanFromPointer,
   clampSpan,
+  packRows,
+  effectiveSpan,
 } from "./dashboardLayout";
+
+describe("packRows", () => {
+  const spans = { ...defaultLayout().spans, saldo: 16, insights: 8, kpis: 24, patrimonio: 14, categorias: 10, metas: 8 };
+
+  it("enche cada fileira até as 24 colunas, na ordem", () => {
+    const rows = packRows(["saldo", "insights", "kpis", "patrimonio", "categorias", "metas"], spans, "wide");
+    expect(rows).toEqual([["saldo", "insights"], ["kpis"], ["patrimonio", "categorias"], ["metas"]]);
+  });
+
+  it("não volta para preencher uma fileira já passada", () => {
+    // insights (8) não cabe ao lado de patrimonio+categorias, e kpis (24) quebra a linha
+    const rows = packRows(["patrimonio", "insights", "categorias"], spans, "wide");
+    expect(rows).toEqual([["patrimonio", "insights"], ["categorias"]]);
+  });
+
+  it("no grid médio, os blocos de até ⅓ vão dois por linha e o resto na linha toda", () => {
+    expect(effectiveSpan(8, "medium")).toBe(12);
+    expect(effectiveSpan(16, "medium")).toBe(24);
+    const rows = packRows(["saldo", "insights", "metas", "kpis"], spans, "medium");
+    expect(rows).toEqual([["saldo"], ["insights", "metas"], ["kpis"]]);
+  });
+
+  it("no celular, um bloco por fileira", () => {
+    expect(packRows(["saldo", "insights", "metas"], spans, "narrow")).toEqual([["saldo"], ["insights"], ["metas"]]);
+  });
+});
 
 describe("parseLayout / formatLayout", () => {
   it("sem cookie usa o layout padrão", () => {
@@ -48,14 +76,23 @@ describe("parseLayout / formatLayout", () => {
   it("cookie antigo (só larguras) mantém a ordem padrão e encaixa os blocos novos no lugar", () => {
     const old = "saldo:6,patrimonio:6,categorias:4,dividas:12,parceladas:4,metas:4,recentes:4";
     const layout = parseLayout(old);
-    expect(layout.order).toEqual(defaultLayout().order);
+    // Os do cookie mantêm a ordem dele; os que faltavam entram no lugar
+    const listed = ["saldo", "patrimonio", "categorias", "dividas", "parceladas", "metas", "recentes"];
+    expect(layout.order.filter((id) => listed.includes(id))).toEqual(listed);
+    expect(layout.order.slice(0, 4)).toEqual(["saldo", "insights", "kpis", "orcamento"]);
+    expect(layout.order).toHaveLength(defaultLayout().order.length);
     expect(layout.hidden).toEqual([]);
     expect(layout.spans.saldo).toBe(16);
   });
 
   it("bloco ausente entra logo depois do que o antecede na ordem padrão", () => {
-    const layout = parseLayout("recentes:4,saldo:5,kpis:12");
-    expect(layout.order.slice(0, 5)).toEqual(["saldo", "insights", "recentes", "kpis", "orcamento"]);
+    const layout = parseLayout("metas:4,saldo:5,kpis:12");
+    // Formato antigo: o resumo (saldo) vai para o topo. Os que faltam entram
+    // logo depois de quem os antecede no padrão: insights depois de saldo,
+    // dividas e parceladas depois de metas, orcamento… depois de kpis
+    expect(layout.order).toEqual([
+      "saldo", "insights", "metas", "dividas", "parceladas", "kpis", "orcamento", "categorias", "recentes", "patrimonio",
+    ]);
     expect(layout.order).toHaveLength(defaultLayout().order.length);
   });
 });
@@ -81,7 +118,7 @@ describe("moveBlock", () => {
   it("não sai das pontas", () => {
     const layout = defaultLayout();
     expect(moveBlock(layout, "saldo", -1)).toBe(layout);
-    expect(moveBlock(layout, "recentes", 1)).toBe(layout);
+    expect(moveBlock(layout, "parceladas", 1)).toBe(layout);
   });
 });
 
@@ -89,7 +126,7 @@ describe("moveBlockTo", () => {
   it("põe o bloco antes ou depois do alvo", () => {
     const layout = defaultLayout();
     expect(moveBlockTo(layout, "recentes", "kpis", "before").order.slice(0, 3)).toEqual(["saldo", "insights", "recentes"]);
-    expect(moveBlockTo(layout, "saldo", "metas", "after").order.slice(-3)).toEqual(["metas", "saldo", "recentes"]);
+    expect(moveBlockTo(layout, "saldo", "metas", "after").order.slice(-4)).toEqual(["metas", "saldo", "dividas", "parceladas"]);
   });
 
   it("mantém larguras, alturas e escondidos", () => {

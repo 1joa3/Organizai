@@ -13,19 +13,24 @@
  * estreita, os blocos pequenos dividem a linha em dois e o resto ocupa a
  * largura toda; no celular, tudo um embaixo do outro.
  */
-export const DASHBOARD_LAYOUT_COOKIE = "dash_layout";
+// "v2": o padrão mudou junto com as fileiras de altura igual (blocos de
+// altura parecida lado a lado). Arranjos salvos no cookie antigo não são
+// mais lidos, e o Dashboard volta para o padrão novo.
+export const DASHBOARD_LAYOUT_COOKIE = "dash_layout_v2";
 
+// Pares pensados para dividir a fileira com alturas parecidas: categorias e
+// últimas transações, patrimônio e metas, dívidas e parcelamentos
 export const DASHBOARD_BLOCKS = [
   { id: "saldo", label: "Resumo do Período", defaultSpan: 16 },
   { id: "insights", label: "Observações", defaultSpan: 8 },
   { id: "kpis", label: "Indicadores", defaultSpan: 24 },
   { id: "orcamento", label: "Orçamento", defaultSpan: 24 },
+  { id: "categorias", label: "Despesas por Categoria", defaultSpan: 12 },
+  { id: "recentes", label: "Últimas transações", defaultSpan: 12 },
   { id: "patrimonio", label: "Evolução Patrimonial", defaultSpan: 14 },
-  { id: "categorias", label: "Despesas por Categoria", defaultSpan: 10 },
-  { id: "dividas", label: "Quitação de Dívidas", defaultSpan: 24 },
-  { id: "parceladas", label: "Despesas Parceladas", defaultSpan: 8 },
-  { id: "metas", label: "Metas", defaultSpan: 8 },
-  { id: "recentes", label: "Transações Recentes", defaultSpan: 8 },
+  { id: "metas", label: "Metas", defaultSpan: 10 },
+  { id: "dividas", label: "Quitação de Dívidas", defaultSpan: 14 },
+  { id: "parceladas", label: "Despesas Parceladas", defaultSpan: 10 },
 ] as const;
 
 export type DashboardBlockId = (typeof DASHBOARD_BLOCKS)[number]["id"];
@@ -159,6 +164,44 @@ export function isDefaultLayout(layout: DashboardLayout): boolean {
 /** Blocos visíveis, na ordem */
 export function visibleBlocks(layout: DashboardLayout): DashboardBlockId[] {
   return layout.order.filter((id) => !layout.hidden.includes(id));
+}
+
+/**
+ * Largura do grid do Dashboard: "wide" (≥ 56rem) usa as larguras escolhidas;
+ * "medium" (≥ 42rem) põe os blocos de até ⅓ lado a lado, dois por linha, e
+ * o resto na linha toda; "narrow" empilha tudo.
+ */
+export type GridMode = "wide" | "medium" | "narrow";
+
+/** Quantas das 24 colunas o bloco ocupa nesse modo */
+export function effectiveSpan(span: number, mode: GridMode): number {
+  if (mode === "wide") return span;
+  if (mode === "medium") return span <= 8 ? 12 : MAX_SPAN;
+  return MAX_SPAN;
+}
+
+/**
+ * Divide os blocos visíveis em fileiras, na ordem, enchendo cada uma até as
+ * 24 colunas. Os blocos de uma fileira ficam com a mesma altura (a do mais
+ * alto), então não sobra buraco embaixo de um bloco mais baixo.
+ */
+export function packRows(
+  ids: DashboardBlockId[],
+  spans: Record<DashboardBlockId, number>,
+  mode: GridMode
+): DashboardBlockId[][] {
+  const rows: DashboardBlockId[][] = [];
+  let used = MAX_SPAN;
+  for (const id of ids) {
+    const span = effectiveSpan(spans[id], mode);
+    if (used + span > MAX_SPAN) {
+      rows.push([]);
+      used = 0;
+    }
+    rows[rows.length - 1].push(id);
+    used += span;
+  }
+  return rows;
 }
 
 /**

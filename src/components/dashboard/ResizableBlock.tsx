@@ -1,7 +1,7 @@
 "use client";
 
 import GlideSelect from "@/components/reactbits/GlideSelect";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   HEIGHT_STEP,
   MAX_SPAN,
@@ -60,12 +60,6 @@ interface ResizableBlockProps {
   editing: boolean;
   /** Grid largo o bastante para as larguras valerem (12 colunas) */
   wide: boolean;
-  /**
-   * Grid em linhas finas (DASH_ROW px): cada bloco ocupa quantas linhas
-   * precisar para a própria altura, sem esticar os vizinhos. Falso até o
-   * navegador assumir (na renderização do servidor, o grid é o comum).
-   */
-  masonry: boolean;
   /** Durante o arraste (pré-visualização); height null = automática */
   onResize: (size: { span: number; height: number | null }) => void;
   /** Ao soltar ou escolher um atalho, com o tamanho final, para salvar */
@@ -102,9 +96,6 @@ const toolButton =
 
 type DragMode = "width" | "corner";
 
-/** Altura de cada linha do grid do Dashboard no modo masonry, em px */
-export const DASH_ROW = 4;
-
 /**
  * Item do grid do Dashboard. No modo de edição mostra o contorno e uma barra
  * com uma alça para arrastar o bloco a outra posição, o nome, setas para
@@ -123,7 +114,6 @@ export default function ResizableBlock({
   height,
   editing,
   wide,
-  masonry,
   onResize,
   onResizeEnd,
   onMoveBefore,
@@ -139,22 +129,6 @@ export default function ResizableBlock({
   const ref = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<DragMode | null>(null);
-  const [rows, setRows] = useState<number | null>(null);
-
-  // Mede a altura real do bloco e ocupa as linhas do grid que ela pede,
-  // mais o espaço entre blocos (o grid não tem gap vertical nesse modo).
-  useEffect(() => {
-    const el = ref.current;
-    if (!masonry || !el?.parentElement) return;
-    const grid = el.parentElement;
-    const observer = new ResizeObserver(() => {
-      const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
-      setRows(Math.ceil((el.offsetHeight + gap) / DASH_ROW));
-    });
-    // border-box: a faixa da barra de edição é padding e também conta
-    observer.observe(el, { box: "border-box" });
-    return () => observer.disconnect();
-  }, [masonry]);
   const current = { span, height: height ?? null };
 
   // Cada alça diz qual é pelo data-mode
@@ -249,7 +223,6 @@ export default function ResizableBlock({
     <div
       ref={ref}
       data-block-id={blockId}
-      style={masonry && rows ? { gridRowEnd: `span ${rows}` } : undefined}
       // Na edição, a barra ganha uma faixa própria acima do conteúdo
       className={`relative ${spanClass(span)} transition-[grid-column,padding,opacity] duration-200 ${editing ? "pt-12" : ""} ${
         reorder === "dragging" ? "opacity-40" : ""
@@ -261,8 +234,10 @@ export default function ResizableBlock({
         // altura, o cartão estica até ela e rola o que passar; os gráficos
         // perdem a altura mínima de sempre (--chart-min) para poder encolher.
         style={height ? ({ height, "--chart-min": "4rem" } as React.CSSProperties) : undefined}
+        // Sem altura escolhida, estica até a altura da fileira (a do bloco
+        // mais alto dela) e o cartão estica junto: nada de buraco embaixo
         className={`@container grid transition-opacity ${
-          height ? "grid-rows-[minmax(0,1fr)] [&>*]:min-h-0 [&>*]:overflow-auto" : "grid-rows-[1fr]"
+          height ? "grid-rows-[minmax(0,1fr)] [&>*]:min-h-0 [&>*]:overflow-auto" : "grid-rows-[1fr] h-full"
         } duration-200 ${
           editing ? "pointer-events-none select-none opacity-50" : ""
         }`}
