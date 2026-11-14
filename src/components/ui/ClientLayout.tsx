@@ -59,7 +59,7 @@ export default function ClientLayout({
               onToggle={toggleSidebar}
               user={user}
             />
-            <MobileBottomNav />
+            <MobileBottomNav user={user} />
 
             <div
               className={`transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-screen flex flex-col ${

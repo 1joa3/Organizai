@@ -56,7 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${inter.variable} ${jetbrainsMono.variable} ${plusJakarta.variable} h-full`}
     >
       <body className="min-h-full bg-bg font-sans antialiased text-text selection:bg-blue selection:text-black">
-        <ClientLayout initialSidebarExpanded={sidebarExpanded} user={user && { name: user.name, email: user.email }}>
+        <ClientLayout initialSidebarExpanded={sidebarExpanded} user={user && { name: user.name, email: user.email, avatarUrl: user.avatarUrl }}>
           {children}
         </ClientLayout>
       </body>

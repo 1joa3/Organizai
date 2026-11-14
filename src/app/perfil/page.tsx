@@ -10,5 +10,12 @@ export default async function PerfilPage() {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getUser();
 
-  return <ProfileClient name={user.name ?? ""} email={user.email ?? ""} createdAt={data.user?.created_at ?? null} />;
+  return (
+    <ProfileClient
+      name={user.name ?? ""}
+      email={user.email ?? ""}
+      avatarUrl={user.avatarUrl}
+      createdAt={data.user?.created_at ?? null}
+    />
+  );
 }

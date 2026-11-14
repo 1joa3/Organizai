@@ -3,11 +3,14 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "./supabase/server";
 import { ensureUserSetup } from "./userSetup";
+import { safeAvatarUrl } from "./avatar";
 
 export interface CurrentUser {
   id: string;
   email: string | null;
   name: string | null;
+  /** Foto de perfil (endereço público no Storage), ou null */
+  avatarUrl: string | null;
 }
 
 /** Usuário logado (JWT validado), ou null. Memoizado por request. */
@@ -16,8 +19,13 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims?.sub) return null;
-  const metadata = (claims.user_metadata ?? {}) as { name?: string };
-  return { id: claims.sub, email: (claims.email as string | undefined) ?? null, name: metadata.name ?? null };
+  const metadata = (claims.user_metadata ?? {}) as { name?: string; avatar_url?: unknown };
+  return {
+    id: claims.sub,
+    email: (claims.email as string | undefined) ?? null,
+    name: metadata.name ?? null,
+    avatarUrl: safeAvatarUrl(metadata.avatar_url, claims.sub, process.env.NEXT_PUBLIC_SUPABASE_URL),
+  };
 });
 
 /**

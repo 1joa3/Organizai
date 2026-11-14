@@ -1,7 +1,13 @@
 "use client";
 
 import PageTitle from "@/components/ui/PageTitle";
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Avatar from "@/components/ui/Avatar";
+import { useToast } from "@/components/ui/Toast";
+import { removeAvatar, uploadAvatar } from "@/lib/avatarActions";
+import { AVATAR_SIZE } from "@/lib/avatar";
+import { squareJpeg } from "@/lib/resizeImage";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -13,12 +19,142 @@ import { changePassword, signOut, updateProfile, type AuthState } from "@/lib/au
 interface ProfileClientProps {
   name: string;
   email: string;
+  avatarUrl: string | null;
   createdAt: string | null;
 }
 
-function initials(name: string, email: string) {
-  const parts = (name.trim() || email).split(/[\s@.]+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? "?") + (name.trim() && parts[1] ? parts[1][0] : "")).toUpperCase();
+/**
+ * Foto de perfil com os botões de trocar e remover. A imagem escolhida é
+ * recortada em quadrado e reduzida no navegador antes de subir.
+ */
+function AvatarEditor({
+  name,
+  email,
+  avatarUrl,
+  children,
+}: {
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  /** Nome, e-mail etc., ao lado da foto; os botões vêm embaixo deles */
+  children: React.ReactNode;
+}) {
+  const toast = useToast();
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState<"upload" | "remove" | null>(null);
+  // Prévia na hora, enquanto a foto sobe
+  const [preview, setPreview] = useState<string | null>(null);
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Escolha uma imagem", "JPG, PNG ou WebP.");
+      return;
+    }
+    setBusy("upload");
+    try {
+      const blob = await squareJpeg(file, AVATAR_SIZE);
+      const local = URL.createObjectURL(blob);
+      setPreview(local);
+      const formData = new FormData();
+      formData.set("avatar", new File([blob], "avatar.jpg", { type: "image/jpeg" }));
+      const result = await uploadAvatar(formData);
+      if (result.error) {
+        toast.error("Não foi possível trocar a foto", result.error);
+        setPreview(null);
+      } else {
+        toast.success("Foto atualizada");
+        router.refresh();
+      }
+    } catch (e) {
+      toast.error("Não foi possível usar essa imagem", e instanceof Error ? e.message : undefined);
+      setPreview(null);
+    } finally {
+      setBusy(null);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  async function handleRemove() {
+    setBusy("remove");
+    const result = await removeAvatar();
+    setBusy(null);
+    if (result.error) {
+      toast.error("Não foi possível remover a foto", result.error);
+      return;
+    }
+    setPreview(null);
+    toast.success("Foto removida");
+    router.refresh();
+  }
+
+  const shown = preview ?? avatarUrl;
+
+  return (
+    <div className="flex items-center gap-5 min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy !== null}
+        aria-label={shown ? "Trocar foto de perfil" : "Adicionar foto de perfil"}
+        className="group relative rounded-full cursor-pointer disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue"
+      >
+        <Avatar name={name} email={email} url={shown} size={72} />
+        {/* Câmera por cima ao passar o mouse; girando enquanto envia */}
+        <span
+          className={`absolute inset-0 rounded-full flex items-center justify-center bg-black/45 text-white transition-opacity ${
+            busy ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+          }`}
+          aria-hidden
+        >
+          {busy ? (
+            <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.3" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          )}
+        </span>
+      </button>
+      <div className="min-w-0 flex-1">
+        {children}
+        <div className="mt-2.5 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy !== null}
+            className="text-sm font-medium text-blue hover:underline underline-offset-4 cursor-pointer disabled:opacity-50"
+          >
+            {busy === "upload" ? "Enviando…" : shown ? "Alterar foto" : "Adicionar foto"}
+          </button>
+          {shown && (
+            <button
+              type="button"
+              onClick={handleRemove}
+              disabled={busy !== null}
+              className="text-sm text-text-muted hover:text-coral cursor-pointer disabled:opacity-50"
+            >
+              {busy === "remove" ? "Removendo…" : "Remover"}
+            </button>
+          )}
+        </div>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/*"
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => handleFile(e.target.files?.[0])}
+      />
+    </div>
+  );
 }
 
 const cardMotion = (delay: number) => ({
@@ -27,7 +163,7 @@ const cardMotion = (delay: number) => ({
   transition: { delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] as const },
 });
 
-export default function ProfileClient({ name, email, createdAt }: ProfileClientProps) {
+export default function ProfileClient({ name, email, avatarUrl, createdAt }: ProfileClientProps) {
   const [profileState, profileAction, savingProfile] = useActionState<AuthState, FormData>(updateProfile, {});
   const [passwordState, passwordAction, savingPassword] = useActionState<AuthState, FormData>(changePassword, {});
 
@@ -42,16 +178,13 @@ export default function ProfileClient({ name, email, createdAt }: ProfileClientP
         <p className="text-sm text-text-dim mt-1">Seus dados de acesso ao OrganizAI</p>
       </motion.div>
 
-      {/* Identidade */}
-      <motion.div {...cardMotion(0.05)} className="glass-card p-6 flex items-center gap-5">
-        <div className="shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-blue/30 to-emerald/30 border border-fg/10 flex items-center justify-center">
-          <span className="font-mono-value text-xl text-fg">{initials(name, email)}</span>
-        </div>
-        <div className="min-w-0">
+      {/* Identidade, com a foto de perfil */}
+      <motion.div {...cardMotion(0.05)} className="glass-card p-6 flex flex-wrap items-center gap-5">
+        <AvatarEditor name={name} email={email} avatarUrl={avatarUrl}>
           <p className="font-display text-xl text-fg truncate">{name || "Sem nome"}</p>
           <p className="text-sm text-text-dim truncate">{email}</p>
           {memberSince && <p className="text-xs text-text-muted mt-1">Membro desde {memberSince}</p>}
-        </div>
+        </AvatarEditor>
       </motion.div>
 
       {/* Aparência (no celular, o único lugar para trocar o tema) */}

@@ -6,23 +6,19 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, ThemeIcon, themeToggleLabel } from "./ThemeToggle";
 import { LogoMark } from "./Logo";
+import Avatar from "./Avatar";
 import { signOut } from "@/lib/authActions";
 
 export interface SidebarUser {
   name: string | null;
   email: string | null;
+  avatarUrl: string | null;
 }
 
 interface SidebarProps {
   isExpanded: boolean;
   onToggle: () => void;
   user: SidebarUser;
-}
-
-function initials(user: SidebarUser) {
-  const source = user.name?.trim() || user.email || "?";
-  const parts = source.split(/[\s@.]+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? "?") + (user.name && parts[1] ? parts[1][0] : "")).toUpperCase();
 }
 
 const ProfileIcon = (
@@ -231,9 +227,7 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
               userMenuOpen ? "bg-fg/5" : ""
             }`}
           >
-            <span className="shrink-0 w-10 h-10 rounded-full bg-fg/10 flex items-center justify-center border border-fg/5">
-              <span className="text-sm font-mono-value text-fg">{initials(user)}</span>
-            </span>
+            <Avatar name={user.name} email={user.email} url={user.avatarUrl} size={40} />
             <span className={`min-w-0 flex-1 ${labelClass(isExpanded)}`}>
               <span className="block text-sm font-semibold text-fg truncate">{user.name ?? "Minha conta"}</span>
               <span className="block text-[11px] text-text-muted truncate mt-0.5">{user.email}</span>
@@ -308,9 +302,22 @@ export default function Sidebar({ isExpanded, onToggle, user }: SidebarProps) {
   );
 }
 
-export function MobileBottomNav() {
+export function MobileBottomNav({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
-  const items = [...navItems, { href: "/perfil", label: "Perfil", icon: ProfileIcon }];
+  const onProfile = pathname === "/perfil";
+  // Com foto de perfil, ela entra num círculo no lugar do ícone de Perfil
+  const profileIcon = user.avatarUrl ? (
+    <Avatar
+      name={user.name}
+      email={user.email}
+      url={user.avatarUrl}
+      size={26}
+      className={`ring-2 ${onProfile ? "ring-blue" : "ring-fg/15"} transition-[box-shadow]`}
+    />
+  ) : (
+    ProfileIcon
+  );
+  const items = [...navItems, { href: "/perfil", label: "Perfil", icon: profileIcon }];
   // Duas abas de cada lado e o "+" no meio, ao alcance do polegar
   const middle = Math.ceil(items.length / 2);
 
