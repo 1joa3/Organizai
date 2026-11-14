@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { applyTheme, getEffectiveTheme, subscribeToTheme, type Theme } from "@/lib/theme";
+import { getEffectiveTheme, originFromEvent, subscribeToTheme, transitionTheme, type Theme } from "@/lib/theme";
 
 const SunIcon = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -16,8 +16,12 @@ const MoonIcon = (
   </svg>
 );
 
-/** Tema efetivo atual; `null` até montar no navegador (o servidor não sabe o tema do sistema). */
-export function useTheme(): [Theme | null, () => void] {
+/**
+ * Tema efetivo atual; `null` até montar no navegador (o servidor não sabe o
+ * tema do sistema). O `toggle` recebe o evento do clique para o tema novo
+ * se espalhar a partir do botão.
+ */
+export function useTheme(): [Theme | null, (e?: React.MouseEvent) => void] {
   const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
@@ -26,7 +30,8 @@ export function useTheme(): [Theme | null, () => void] {
     return subscribeToTheme(update);
   }, []);
 
-  const toggle = () => applyTheme(getEffectiveTheme() === "dark" ? "light" : "dark");
+  const toggle = (e?: React.MouseEvent) =>
+    transitionTheme(getEffectiveTheme() === "dark" ? "light" : "dark", e ? originFromEvent(e) : undefined);
   return [theme, toggle];
 }
 

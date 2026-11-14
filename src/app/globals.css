@@ -200,6 +200,24 @@ body::after {
   color: var(--bg);
 }
 
+/* ─── Troca de tema (lib/theme.ts → transitionTheme) ───
+   O tema novo cresce num círculo por cima do antigo. As animações padrão
+   (cross-fade) saem: quem anima é o clip-path do ::view-transition-new. */
+:root[data-theme-transition]::view-transition-old(root),
+:root[data-theme-transition]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root[data-theme-transition]::view-transition-new(root) {
+  z-index: 1;
+}
+/* Sem transições de cor enquanto troca: o círculo revela o tema já pronto */
+:root[data-theme-transition] *,
+:root[data-theme-transition] *::before,
+:root[data-theme-transition] *::after {
+  transition: none !important;
+}
+
 /* Celular: campos com letra de 16px. Abaixo disso o Safari do iPhone dá
    zoom na página ao tocar no campo. Fora de @layer, vence o text-sm dos
    componentes. */

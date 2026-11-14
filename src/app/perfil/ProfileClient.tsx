@@ -13,7 +13,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { FormMessage } from "@/components/auth/AuthCard";
 import { useTheme } from "@/components/ui/ThemeToggle";
-import { applyTheme, type Theme } from "@/lib/theme";
+import { originFromEvent, transitionTheme, type Theme } from "@/lib/theme";
 import { changePassword, signOut, updateProfile, type AuthState } from "@/lib/authActions";
 
 interface ProfileClientProps {
@@ -257,7 +257,7 @@ function AppearancePicker() {
           type="button"
           role="radio"
           aria-checked={theme === o.value}
-          onClick={() => applyTheme(o.value)}
+          onClick={(e) => transitionTheme(o.value, originFromEvent(e))}
           className={`flex-1 py-2.5 rounded-md text-sm font-medium transition-all cursor-pointer border ${
             theme === o.value ? "bg-blue/10 text-blue border-blue/30" : "text-text-dim hover:text-fg border-transparent"
           }`}
