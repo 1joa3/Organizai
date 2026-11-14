@@ -2,12 +2,13 @@
 
 import Checkbox from "@/components/ui/Checkbox";
 import GlideSelect from "@/components/reactbits/GlideSelect";
-import { Fragment, useState, useTransition, useMemo } from "react";
+import { Fragment, useEffect, useState, useTransition, useMemo } from "react";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { importTransactions } from "./actions";
+import { getImportDuplicateCandidates, importTransactions } from "./actions";
+import { findDuplicates, type DuplicateMatch, type ExistingTransaction } from "@/lib/importDuplicates";
 import {
   parseCSV,
   coerceDate,
@@ -50,6 +51,26 @@ interface OverrideState {
 
 const NO_OVERRIDE_STATE: OverrideState = { rows: null, categories: {}, installments: {} };
 
+// Escolha "importar/ignorar" das linhas que parecem já cadastradas, por
+// chave de linha. Vale só para as linhas e a conta em que foi feita.
+interface DuplicateChoiceState {
+  rows: unknown;
+  accountId: string;
+  include: Record<string, boolean>;
+}
+
+const NO_DUPLICATE_CHOICES: DuplicateChoiceState = { rows: null, accountId: "", include: {} };
+
+const DUPLICATE_LABEL: Record<DuplicateMatch["kind"], string> = {
+  exact: "Já cadastrada",
+  probable: "Parece já cadastrada",
+  possible: "Possível duplicata",
+};
+
+// Exatas e parecidas começam ignoradas; "mesmo dia e valor, outro nome" é
+// fraco demais para descartar sem o usuário confirmar.
+const includeByDefault = (kind: DuplicateMatch["kind"]) => kind === "possible";
+
 interface InstallmentEdit {
   index: number;
   current: string;
@@ -82,11 +103,15 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
   // Categoria escolhida por linha, guardada junto com as linhas a que se refere
   const [overrideState, setOverrideState] = useState<OverrideState>(NO_OVERRIDE_STATE);
   const [installmentEdit, setInstallmentEdit] = useState<InstallmentEdit | null>(null);
+  const [duplicateChoices, setDuplicateChoices] = useState<DuplicateChoiceState>(NO_DUPLICATE_CHOICES);
+  // Transações já cadastradas no período do arquivo, guardadas com a busca que as trouxe
+  const [lookup, setLookup] = useState<{ key: string; existing: ExistingTransaction[] } | null>(null);
 
   function reset() {
     setInputMode("csv");
     setOverrideState(NO_OVERRIDE_STATE);
     setInstallmentEdit(null);
+    setDuplicateChoices(NO_DUPLICATE_CHOICES);
     setFileName(null);
     setParsed(null);
     setTruncated(false);
@@ -216,7 +241,78 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
     });
   }, [singleRows, overrides, detectInstallments]);
 
+  // Período coberto pelas linhas válidas — é o que buscamos no servidor
+  const lookupKey = useMemo(() => {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const r of mappedRows) {
+      if (!r.valid || !r.date) continue;
+      min = Math.min(min, r.date.getTime());
+      max = Math.max(max, r.date.getTime());
+    }
+    if (!accountId || min === Infinity) return null;
+    return `${accountId}|${formatDateInput(new Date(min))}|${formatDateInput(new Date(max))}`;
+  }, [mappedRows, accountId]);
+
+  useEffect(() => {
+    if (!lookupKey) return;
+    let cancelled = false;
+    const [account, from, to] = lookupKey.split("|");
+    getImportDuplicateCandidates({ accountId: account, from, to })
+      .then((res) => {
+        if (!cancelled && "existing" in res) setLookup({ key: lookupKey, existing: res.existing });
+      })
+      .catch(() => {
+        // Sem a busca a pré-visualização só não marca duplicatas; o servidor
+        // ainda barra as cópias exatas na hora de importar.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lookupKey]);
+
+  const existing = lookup && lookup.key === lookupKey ? lookup.existing : null;
+  const checkingDuplicates = lookupKey !== null && existing === null;
+
+  const duplicates = useMemo(() => {
+    if (!existing) return mappedRows.map(() => null);
+    return findDuplicates(
+      mappedRows.map((r) =>
+        r.valid && r.date && r.amount !== null
+          ? { date: r.date, description: r.description, amount: r.amount, type: r.type }
+          : null
+      ),
+      existing
+    );
+  }, [mappedRows, existing]);
+
+  const choices =
+    duplicateChoices.rows === singleRows && duplicateChoices.accountId === accountId
+      ? duplicateChoices
+      : NO_DUPLICATE_CHOICES;
+
+  function rowKey(r: (typeof mappedRows)[number]) {
+    return `${r.sourceIndex}:${r.installment?.current ?? ""}`;
+  }
+
+  function isIncluded(i: number) {
+    const dup = duplicates[i];
+    if (!dup) return true;
+    const key = rowKey(mappedRows[i]);
+    return key in choices.include ? choices.include[key] : includeByDefault(dup.kind);
+  }
+
+  function setIncluded(indexes: number[], value: boolean) {
+    const include = { ...choices.include };
+    for (const i of indexes) include[rowKey(mappedRows[i])] = value;
+    setDuplicateChoices({ rows: singleRows, accountId, include });
+  }
+
+  const duplicateIndexes = mappedRows.flatMap((_, i) => (duplicates[i] ? [i] : []));
+  const ignoredCount = duplicateIndexes.filter((i) => !isIncluded(i)).length;
+
   const validCount = mappedRows.filter((r) => r.valid).length;
+  const importCount = validCount - ignoredCount;
   const invalidCount = mappedRows.length - validCount;
   const installmentExtra = mappedRows.length - singleRows.length;
   const isMapped = dateCol >= 0 && descCol >= 0 && amountCol >= 0;
@@ -265,25 +361,33 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
       toast.error("Faltam dados", "Selecione a conta e a categoria padrão antes de importar.");
       return;
     }
-    const missingCategory = mappedRows.some((r) => r.valid && !getRowCategoryId(r.sourceIndex));
+    const missingCategory = mappedRows.some((r, i) => r.valid && isIncluded(i) && !getRowCategoryId(r.sourceIndex));
     if (missingCategory) {
       toast.error("Faltam dados", "Alguma linha ficou sem categoria.");
       return;
     }
 
-    const rowsToSend = mappedRows
-      .map((r) => ({ ...r, categoryId: getRowCategoryId(r.sourceIndex) }))
-      .filter((r) => r.valid)
-      .map((r) => ({
-        date: formatDateInput(r.date!),
-        description: r.description,
-        amount: r.amount!,
-        type: r.type,
-        categoryId: r.categoryId,
-      }));
+    const rowsToSend = mappedRows.flatMap((r, i) =>
+      r.valid && isIncluded(i)
+        ? [
+            {
+              date: formatDateInput(r.date!),
+              description: r.description,
+              amount: r.amount!,
+              type: r.type,
+              categoryId: getRowCategoryId(r.sourceIndex),
+              // se apareceu como duplicata e continuou marcada, o usuário quer importar
+              keepDuplicate: duplicates[i] !== null,
+            },
+          ]
+        : []
+    );
 
     if (rowsToSend.length === 0) {
-      toast.error("Nada para importar", "Nenhuma linha válida para importar.");
+      toast.error(
+        "Nada para importar",
+        ignoredCount > 0 ? "Todas as linhas já estão cadastradas." : "Nenhuma linha válida para importar."
+      );
       return;
     }
 
@@ -294,9 +398,10 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
         if (result?.error) {
           toast.error("Erro ao importar", result.error);
         } else {
+          const skipped = (result.skipped ?? 0) + ignoredCount;
           toast.success(
             "Importação concluída",
-            `${result.imported} transações importadas${result.skipped ? `, ${result.skipped} já existiam e foram ignoradas` : ""}.`
+            `${result.imported} transações importadas${skipped ? `, ${skipped} já existiam e foram ignoradas` : ""}.`
           );
           handleClose();
         }
@@ -323,6 +428,31 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
       >
         {r.installment ? `${r.installment.current}/${r.installment.total}` : "Parcelar"}
       </button>
+    );
+  }
+
+  function duplicateBadge(i: number) {
+    const dup = duplicates[i];
+    if (!dup) return null;
+    const included = isIncluded(i);
+    const e = dup.existing;
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px]">
+        <span
+          className={dup.kind === "possible" ? "text-text-dim" : "text-amber"}
+          title={`Já existe: ${e.description} · ${formatDate(e.date)} · ${formatCurrency(e.amount)}`}
+        >
+          {DUPLICATE_LABEL[dup.kind]}
+          {dup.kind !== "exact" && <span className="text-text-muted">: {e.description}, {formatDateShort(e.date)}</span>}
+        </span>
+        <button
+          type="button"
+          onClick={() => setIncluded([i], !included)}
+          className="text-blue hover:text-fg transition-colors cursor-pointer"
+        >
+          {included ? "Ignorar" : "Importar mesmo assim"}
+        </button>
+      </div>
     );
   }
 
@@ -508,17 +638,41 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
               Pré-visualização ({validCount} válidas{invalidCount > 0 ? `, ${invalidCount} com erro (serão ignoradas)` : ""}
               {installmentExtra > 0 ? `, +${installmentExtra} parcelas futuras geradas` : ""})
             </p>
+            {checkingDuplicates && (
+              <p className="text-[11px] text-text-muted mb-2">Conferindo o que já está cadastrado nesta conta…</p>
+            )}
+            {duplicateIndexes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-amber bg-amber/10 border border-amber/30 rounded-lg px-3 py-2 mb-2">
+                <span className="flex-1 min-w-[200px]">
+                  {duplicateIndexes.length === 1
+                    ? "1 linha parece já estar cadastrada nesta conta"
+                    : `${duplicateIndexes.length} linhas parecem já estar cadastradas nesta conta`}
+                  {ignoredCount > 0 ? ` — ${ignoredCount} ${ignoredCount === 1 ? "será ignorada" : "serão ignoradas"}.` : "."}
+                </span>
+                {ignoredCount < duplicateIndexes.length && (
+                  <button type="button" onClick={() => setIncluded(duplicateIndexes, false)} className="text-blue hover:text-fg cursor-pointer">
+                    Ignorar todas
+                  </button>
+                )}
+                {ignoredCount > 0 && (
+                  <button type="button" onClick={() => setIncluded(duplicateIndexes, true)} className="text-blue hover:text-fg cursor-pointer">
+                    Importar todas
+                  </button>
+                )}
+              </div>
+            )}
             <div className="glass-panel overflow-hidden max-h-80 overflow-y-auto">
               <table className="w-full text-xs">
                 <tbody>
                   {mappedRows.map((r, i) => (
                     <Fragment key={i}>
-                    <tr className={`border-b border-fg/5 last:border-b-0 ${!r.valid ? "opacity-50" : ""}`}>
+                    <tr className={`border-b border-fg/5 last:border-b-0 ${!r.valid || !isIncluded(i) ? "opacity-50" : ""}`}>
                       <td className="hidden sm:table-cell px-3 py-2 font-mono-value text-text-dim whitespace-nowrap">
                         {r.date ? formatDate(r.date) : "—"}
                       </td>
                       <td className="px-3 py-2 text-fg max-w-[160px]">
-                        <p className="truncate">{r.description || "—"}</p>
+                        <p className={`truncate ${!isIncluded(i) ? "line-through" : ""}`}>{r.description || "—"}</p>
+                        {duplicateBadge(i)}
                         {/* No celular a data e o botão de parcela ficam aqui, para a tabela caber na tela */}
                         <div className="sm:hidden flex items-center gap-2 mt-1">
                           <span className="font-mono-value text-text-dim whitespace-nowrap">{r.date ? formatDateShort(r.date) : "—"}</span>
@@ -612,8 +766,8 @@ export default function ImportModal({ isOpen, onClose, accounts, categories }: I
             Cancelar
           </Button>
           {hasRows && (
-            <Button type="button" loading={isImporting || isPending} disabled={validCount === 0} onClick={handleImport}>
-              Importar {validCount > 0 ? `(${validCount})` : ""}
+            <Button type="button" loading={isImporting || isPending} disabled={importCount === 0} onClick={handleImport}>
+              Importar {importCount > 0 ? `(${importCount})` : ""}
             </Button>
           )}
         </div>

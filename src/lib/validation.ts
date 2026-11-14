@@ -126,10 +126,18 @@ export const importSchema = z.object({
         amount: amount(),
         type: z.enum(TRANSACTION_TYPES).catch("despesa"),
         categoryId: id("a categoria"),
+        // o usuário viu que parece duplicada e escolheu importar mesmo assim
+        keepDuplicate: z.boolean().optional().default(false),
       })
     )
     .min(1, "Nenhuma linha válida para importar")
     .max(5000, "Arquivo grande demais (máximo de 5000 linhas)"),
+});
+
+export const duplicateLookupSchema = z.object({
+  accountId: id("a conta"),
+  from: date(),
+  to: date(),
 });
 
 export const idListSchema = z.array(id("uma transação")).min(1, "Nenhuma transação selecionada").max(5000);

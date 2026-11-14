@@ -5,9 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 import { splitInstallmentAmounts, addMonthsClamped, importInstallmentKey } from "@/lib/installments";
+import { DUPLICATE_DAY_TOLERANCE, exactKey, type ExistingTransaction } from "@/lib/importDuplicates";
 import {
   accountSchema,
   categorySchema,
+  duplicateLookupSchema,
   firstError,
   formToObject,
   idListSchema,
@@ -179,10 +181,38 @@ export async function createCategory(formData: FormData) {
 }
 
 /**
+ * Transações já cadastradas na conta entre `from` e `to` (com folga de
+ * ±2 dias), para a pré-visualização da importação marcar o que parece
+ * duplicado. A comparação em si roda no navegador (findDuplicates).
+ */
+export async function getImportDuplicateCandidates(
+  input: unknown
+): Promise<{ error: string } | { existing: ExistingTransaction[] }> {
+  const { id: userId } = await requireUser();
+  const parsed = duplicateLookupSchema.safeParse(input);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { accountId, from, to } = parsed.data;
+
+  const pad = DUPLICATE_DAY_TOLERANCE * 86_400_000;
+  const rows = await prisma.transaction.findMany({
+    where: {
+      accountId,
+      userId,
+      date: { gte: new Date(from.getTime() - pad), lte: new Date(to.getTime() + pad) },
+    },
+    select: { id: true, date: true, description: true, amount: true, type: true },
+    take: 20000,
+  });
+  return { existing: rows.map((r) => ({ ...r, amount: Number(r.amount) })) };
+}
+
+/**
  * Importa transações em lote (ex: fatura/extrato exportado em CSV).
  * Cada linha já vem com sua própria categoria (editável por linha na
- * pré-visualização). Ignora linhas que já existem (mesma conta + data +
- * descrição + valor) para permitir reimportar um arquivo sem duplicar.
+ * pré-visualização). A pré-visualização já marca e tira as duplicatas que o
+ * usuário escolheu ignorar; aqui só barramos cópias exatas (mesma conta +
+ * data + descrição + valor), uma por transação existente, para permitir
+ * reimportar um arquivo sem duplicar.
  * Linhas "Loja (n/N)" da mesma compra ganham o mesmo grupo de parcelas —
  * reaproveitando o grupo de uma importação anterior, se já existir.
  */
@@ -207,9 +237,14 @@ export async function importTransactions(input: unknown) {
     where: { accountId, userId, date: { gte: minDate, lte: maxDate } },
     select: { date: true, description: true, amount: true },
   });
-  const existingKeys = new Set(
-    existing.map((e) => `${e.date.getTime()}|${e.description}|${Number(e.amount).toFixed(2)}`)
-  );
+  // Quantas cópias exatas de cada linha já existem. É uma contagem (e não um
+  // Set) para que duas compras iguais no mesmo arquivo — dois cafés de R$ 8
+  // no mesmo dia — não sejam tratadas como duplicata uma da outra.
+  const existingCounts = new Map<string, number>();
+  for (const e of existing) {
+    const key = exactKey({ ...e, amount: Number(e.amount) });
+    existingCounts.set(key, (existingCounts.get(key) ?? 0) + 1);
+  }
 
   const groupIds = new Map<string, string>();
   async function groupIdFor(key: string, baseName: string, total: number, type: string, categoryId: string) {
@@ -237,12 +272,16 @@ export async function importTransactions(input: unknown) {
   let skipped = 0;
 
   for (const row of rows) {
-    const key = `${row.date.getTime()}|${row.description}|${row.amount.toFixed(2)}`;
-    if (existingKeys.has(key)) {
+    // Rede de segurança contra reimportar o mesmo arquivo (ou clicar duas
+    // vezes): cópias exatas são ignoradas, a não ser que o usuário tenha
+    // escolhido importar mesmo assim na pré-visualização.
+    const key = exactKey(row);
+    const remaining = existingCounts.get(key) ?? 0;
+    if (remaining > 0 && !row.keepDuplicate) {
+      existingCounts.set(key, remaining - 1);
       skipped++;
       continue;
     }
-    existingKeys.add(key); // evita duplicar dentro do próprio arquivo
 
     const installment = importInstallmentKey(row);
     toCreate.push({
