@@ -5,7 +5,7 @@ import "./globals.css";
 import ClientLayout from "@/components/ui/ClientLayout";
 import { THEME_COOKIE, parseThemeCookie } from "@/lib/theme";
 import { SIDEBAR_COOKIE, parseSidebarCookie } from "@/lib/sidebar";
-import { getCurrentUser } from "@/lib/dal";
+import { getCurrentUser, getUserProfile } from "@/lib/dal";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -48,6 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const theme = parseThemeCookie(cookieStore.get(THEME_COOKIE)?.value);
   const sidebarExpanded = parseSidebarCookie(cookieStore.get(SIDEBAR_COOKIE)?.value);
   const user = await getCurrentUser();
+  const profile = user && (await getUserProfile(user));
 
   return (
     <html
@@ -56,7 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${inter.variable} ${jetbrainsMono.variable} ${plusJakarta.variable} h-full`}
     >
       <body className="min-h-full bg-bg font-sans antialiased text-text selection:bg-blue selection:text-black">
-        <ClientLayout initialSidebarExpanded={sidebarExpanded} user={user && { name: user.name, email: user.email, avatarUrl: user.avatarUrl }}>
+        <ClientLayout initialSidebarExpanded={sidebarExpanded} user={user && profile && { name: profile.name, email: user.email, avatarUrl: profile.avatarUrl }}>
           {children}
         </ClientLayout>
       </body>

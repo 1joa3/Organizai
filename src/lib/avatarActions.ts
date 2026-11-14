@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "./dal";
+import { getUserProfile, requireUser } from "./dal";
 import { createSupabaseServerClient } from "./supabase/server";
 import { supabaseConfig } from "./supabase/config";
 import { AVATAR_BUCKET, AVATAR_MAX_BYTES, AVATAR_TYPES, avatarPathFromUrl } from "./avatar";
@@ -24,6 +24,8 @@ export async function uploadAvatar(formData: FormData): Promise<{ error?: string
   if (!AVATAR_TYPES.includes(file.type)) return { error: "Use uma imagem JPG, PNG ou WebP." };
   if (file.size > AVATAR_MAX_BYTES) return { error: "A imagem passou de 1 MB." };
 
+  // Foto atual de verdade (o token deste aparelho pode estar desatualizado)
+  const { avatarUrl: previous } = await getUserProfile(user);
   const supabase = await createSupabaseServerClient();
   const path = `${user.id}/${randomUUID()}.${EXT[file.type]}`;
   const { error: uploadError } = await supabase.storage
@@ -42,7 +44,7 @@ export async function uploadAvatar(formData: FormData): Promise<{ error?: string
     return { error: "Não foi possível salvar a foto no perfil." };
   }
 
-  await removeOld(supabase, user.avatarUrl);
+  await removeOld(supabase, previous);
   // O token guarda os dados do perfil: renova para a foto nova valer já
   await supabase.auth.refreshSession();
   revalidatePath("/", "layout");
@@ -52,13 +54,14 @@ export async function uploadAvatar(formData: FormData): Promise<{ error?: string
 /** Tira a foto de perfil (volta para as iniciais). */
 export async function removeAvatar(): Promise<{ error?: string }> {
   const user = await requireUser();
+  const { avatarUrl: previous } = await getUserProfile(user);
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.updateUser({ data: { avatar_url: null } });
   if (error) {
     console.error("Avatar remove error:", error);
     return { error: "Não foi possível remover a foto." };
   }
-  await removeOld(supabase, user.avatarUrl);
+  await removeOld(supabase, previous);
   await supabase.auth.refreshSession();
   revalidatePath("/", "layout");
   return {};

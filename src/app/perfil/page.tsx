@@ -1,21 +1,18 @@
-import { requireUser } from "@/lib/dal";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getUserProfile, requireUser } from "@/lib/dal";
 import ProfileClient from "./ProfileClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function PerfilPage() {
   const user = await requireUser();
-  // Data de cadastro não vem no token: busca o usuário no Supabase Auth
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
+  const profile = await getUserProfile(user);
 
   return (
     <ProfileClient
-      name={user.name ?? ""}
+      name={profile.name ?? ""}
       email={user.email ?? ""}
-      avatarUrl={user.avatarUrl}
-      createdAt={data.user?.created_at ?? null}
+      avatarUrl={profile.avatarUrl}
+      createdAt={profile.createdAt}
     />
   );
 }

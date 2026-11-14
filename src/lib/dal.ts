@@ -28,6 +28,32 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   };
 });
 
+export interface UserProfile {
+  name: string | null;
+  avatarUrl: string | null;
+  /** Data de cadastro (ISO), ou null */
+  createdAt: string | null;
+}
+
+/**
+ * Nome e foto atuais, lidos do Supabase Auth — não do token. O token só é
+ * renovado no aparelho onde o perfil mudou; nos outros ele guarda o nome e a
+ * foto antigos por até ~1 h. Por isso o que é exibido vem daqui, e o token
+ * fica só para saber quem está logado. Memoizado por request.
+ */
+export const getUserProfile = cache(async (user: CurrentUser): Promise<UserProfile> => {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.getUser();
+  // Se o Auth não responder, mostra o que veio no token em vez de quebrar a página
+  if (error || data.user?.id !== user.id) return { name: user.name, avatarUrl: user.avatarUrl, createdAt: null };
+  const metadata = (data.user.user_metadata ?? {}) as { name?: string; avatar_url?: unknown };
+  return {
+    name: metadata.name ?? null,
+    avatarUrl: safeAvatarUrl(metadata.avatar_url, user.id, process.env.NEXT_PUBLIC_SUPABASE_URL),
+    createdAt: data.user.created_at ?? null,
+  };
+});
+
 /**
  * Exige login: devolve o usuário (já com conta e categorias prontas) ou
  * redireciona para /login. Use em toda página e server action que lê ou
