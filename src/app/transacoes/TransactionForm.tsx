@@ -10,8 +10,8 @@ import CategoryIcon from "@/components/ui/CategoryIcon";
 import { useToast } from "@/components/ui/Toast";
 import { createAccount, createCategory, createTransaction, updateTransaction } from "./actions";
 import { formatDateInput } from "@/lib/formatters";
-import { moneyDisplay, moneyFromTyping, moneyValue } from "@/lib/moneyInput";
-import { shake } from "@/lib/shake";
+import { moneyValue } from "@/lib/moneyInput";
+import AmountField from "@/components/ui/AmountField";
 import { MAX_INSTALLMENTS } from "@/lib/validation";
 import type { SerializedTransaction } from "@/lib/types";
 
@@ -136,27 +136,16 @@ export default function TransactionForm({ editing, accounts, categories, onDone,
       <input type="hidden" name="type" value={type} />
 
       {/* Valor em destaque: é o que mais importa e o primeiro a digitar */}
-      <label className="t-shake block rounded-2xl bg-fg/[0.04] border border-fg/10 px-4 pt-3 pb-4 focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10 transition-[border-color,box-shadow]">
-        <span className={label}>{canSplit ? "Valor total" : "Valor"}</span>
-        <span className="mt-1 flex items-baseline gap-2">
-          <span className={`text-xl ${type === "receita" ? "text-emerald" : "text-coral"}`}>{type === "receita" ? "+" : "−"} R$</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="0,00"
-            required
-            autoFocus={!editing}
-            value={moneyDisplay(amount)}
-            onChange={(e) => setAmount(moneyFromTyping(e.target.value))}
-            onInvalid={(e) => shake(e.currentTarget.closest(".t-shake"))}
-            aria-label="Valor"
-            // O contorno de foco é o da caixa toda (focus-within), não o do campo
-            className="min-w-0 flex-1 bg-transparent font-mono-value text-[2rem]! leading-tight text-fg placeholder:text-text-muted/60 outline-none! focus-visible:outline-none!"
-          />
-        </span>
-        <input type="hidden" name="amount" value={amount} />
-      </label>
+      <AmountField
+        label={canSplit ? "Valor total" : "Valor"}
+        name="amount"
+        required
+        autoFocus={!editing}
+        value={amount}
+        onChange={setAmount}
+        prefix={type === "receita" ? "+ R$" : "− R$"}
+        prefixClassName={type === "receita" ? "text-emerald" : "text-coral"}
+      />
 
       <Input
         name="description"
